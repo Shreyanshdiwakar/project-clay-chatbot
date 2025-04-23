@@ -6,9 +6,16 @@ A full-stack AI chatbot built with Next.js and Tailwind CSS that helps high scho
 
 - Chat UI with message history (user and bot messages)
 - Responsive design with Tailwind CSS
-- Integration with OpenRouter API using the openchat/openchat-3.5 model
+- Integration with OpenRouter API using models like GPT-3.5-Turbo
 - Loading spinner during API responses
 - Academic counselor persona to help students with extracurricular planning
+
+## Tech Stack
+
+- Next.js (React framework)
+- TypeScript
+- Tailwind CSS
+- OpenRouter API
 
 ## Getting Started
 
@@ -21,8 +28,8 @@ A full-stack AI chatbot built with Next.js and Tailwind CSS that helps high scho
 
 1. Clone this repository:
 ```bash
-git clone <repository-url>
-cd projectclay-chatbot
+git clone https://github.com/Shreyanshdiwakar/project-clay-ai.git
+cd project-clay-ai
 ```
 
 2. Install dependencies:
@@ -51,13 +58,6 @@ yarn dev
 1. The chatbot will greet you as an academic counselor
 2. Type your questions about extracurricular activities, college planning, etc.
 3. The AI will respond with helpful guidance and ask follow-up questions
-
-## Tech Stack
-
-- Next.js (React framework)
-- TypeScript
-- Tailwind CSS
-- OpenRouter API with the openchat/openchat-3.5 model
 
 ## License
 
