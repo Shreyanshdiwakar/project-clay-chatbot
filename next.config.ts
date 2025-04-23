@@ -1,10 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /**
-   * Enable static exports for GitHub Pages only in production
-   */
-  ...(process.env.NODE_ENV === 'production' && {
+  // Disable static exports configuration for Vercel deployment
+  // Only use static exports for GitHub Pages
+  ...((process.env.NODE_ENV === 'production' && process.env.GITHUB_PAGES === 'true') && {
     output: "export",
     
     /**
