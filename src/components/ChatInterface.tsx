@@ -16,6 +16,15 @@ export const ChatInterface = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
+    }
+  }, [input]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -24,6 +33,11 @@ export const ChatInterface = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Focus input on load
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,12 +91,23 @@ export const ChatInterface = () => {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
+      // Focus back on input
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  };
+
+  // Handle Ctrl+Enter to submit
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      handleSubmit(e);
     }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
@@ -90,23 +115,34 @@ export const ChatInterface = () => {
         <div ref={messagesEndRef} />
       </div>
       
-      <form onSubmit={handleSubmit} className="border-t p-4">
-        <div className="flex items-center">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            disabled={loading}
-            className="flex-1 border border-gray-300 rounded-l-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="bg-blue-500 text-white px-4 py-2 rounded-r-lg disabled:opacity-50"
-          >
-            Send
-          </button>
+      <form onSubmit={handleSubmit} className="border-t dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+        <div className="flex flex-col space-y-3">
+          <div className="relative">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your message..."
+              disabled={loading}
+              rows={1}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg py-3 px-4 pr-16 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 dark:text-white"
+            />
+            <button
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="absolute right-2 bottom-2 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Send message"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+              </svg>
+            </button>
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 flex justify-between">
+            <span>Press <kbd className="bg-gray-100 dark:bg-gray-700 px-1 rounded">Ctrl</kbd>+<kbd className="bg-gray-100 dark:bg-gray-700 px-1 rounded">Enter</kbd> to send</span>
+            {loading && <span>Thinking...</span>}
+          </div>
         </div>
       </form>
     </div>
