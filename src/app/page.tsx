@@ -1,46 +1,190 @@
 'use client';
 
-import { ChatInterface } from '@/components/ChatInterface';
+import { useState, useRef, useEffect } from 'react';
+import { ChatInput } from '@/components/ChatInput';
+import { ChatMessage } from '@/components/ChatMessage';
+import { Message, ModelInfo } from '@/types/chat';
+import Image from 'next/image';
+import { ThinkingIndicator } from '@/components/ThinkingIndicator';
 
 export default function Home() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isThinking, setIsThinking] = useState(false);
+  const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim()) return;
+    
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content,
+      role: 'user',
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setIsThinking(true);
+    setThinkingSteps([]);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: content })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to get response');
+      }
+      
+      const data = await response.json();
+      
+      // Create model info if available
+      let modelInfo: ModelInfo | undefined = undefined;
+      if (data.model) {
+        modelInfo = {
+          name: data.model.name,
+          description: data.model.description,
+          features: data.model.features,
+          developer: data.model.developer,
+          parameters: data.model.parameters
+        };
+      }
+      
+      // Add bot message
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: data.message,
+        role: 'assistant',
+        timestamp: new Date(),
+        modelInfo
+      };
+      
+      // If thinking steps are available, show them
+      if (data.thinking && Array.isArray(data.thinking)) {
+        setThinkingSteps(data.thinking);
+      }
+      
+      // Short delay to show thinking steps
+      setTimeout(() => {
+        setMessages(prev => [...prev, botMessage]);
+        setIsThinking(false);
+      }, data.thinking && data.thinking.length > 0 ? 1500 : 0);
+      
+    } catch (err) {
+      setIsThinking(false);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      console.error('Error sending message:', err);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-      <header className="bg-primary-gradient py-6 shadow-md">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div className="mb-4 md:mb-0">
-              <h1 className="text-3xl font-bold text-white">Academic Counselor AI</h1>
-              <p className="text-blue-100 mt-1">
-                Plan your extracurricular activities with personalized guidance
-              </p>
-            </div>
-            <div className="flex space-x-2">
-              <span className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-blue-200 text-blue-800">
-                Beta
-              </span>
-              <span className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-blue-800 text-white">
-                AI-Powered
-              </span>
-            </div>
-          </div>
+    <main className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <header className="bg-black text-white py-4 px-6 flex justify-between items-center">
+        <div className="flex items-center">
+          <Image 
+            src="/projectclay-logo.svg"
+            alt="Project Clay Logo"
+            width={120}
+            height={40}
+            className="mr-2"
+          />
+        </div>
+        <div className="flex items-center space-x-4">
+          <button className="text-sm font-medium hover:text-blue-400 transition-colors">Browse mentors</button>
+          <button className="text-sm font-medium hover:text-blue-400 transition-colors">Try 10</button>
+          <button className="text-sm font-medium hover:text-blue-400 transition-colors">Book a Call</button>
+          <button className="text-sm font-medium hover:text-blue-400 transition-colors">Join Community</button>
+          <button className="bg-white text-black px-4 py-1.5 rounded-md text-sm font-medium flex items-center hover:bg-gray-100 transition-colors">
+            Register now
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1">
+              <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden h-[calc(100vh-10rem)]">
-          <ChatInterface />
+      <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto p-4 md:p-8">
+        {/* Welcome section if no messages */}
+        {messages.length === 0 && (
+          <div className="text-center my-12 max-w-3xl mx-auto">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-800 dark:text-white">
+              Any passion, any college.<br />
+              We're here for you.
+            </h1>
+            <p className="text-lg mb-6 text-gray-600 dark:text-gray-300">
+              Traditional college counselling is out of touch and expensive.<br />
+              Learning new skills is hard. We pair you with an elder sibling who will guide you through it.
+            </p>
+            <div className="mt-4 text-sm text-center text-gray-500 dark:text-gray-400">
+              <p className="flex justify-center items-center gap-1">
+                <span className="flex -space-x-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <span key={i} className="inline-block h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700"></span>
+                  ))}
+                </span>
+                Trusted by 5000+ students from 30+ countries
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Chat messages */}
+        <div className="flex-1 overflow-y-auto">
+          {messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+          
+          {isThinking && (
+            <div className="flex w-full my-4 justify-start">
+              <div className="flex-shrink-0 mr-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex flex-col max-w-[85%]">
+                <div className="p-4 rounded-lg card-shadow bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none">
+                  <ThinkingIndicator steps={thinkingSteps} />
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {error && (
+            <div className="p-3 my-4 bg-red-50 border border-red-200 rounded-lg text-red-600 dark:bg-red-900/20 dark:border-red-800/30 dark:text-red-400">
+              <p className="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                </svg>
+                {error}
+              </p>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
         </div>
-      </main>
-
-      <footer className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-        <p>© 2023 Project Clay. All rights reserved.</p>
-      </footer>
-
-      <style jsx global>{`
-        .bg-primary-gradient {
-          background: linear-gradient(to right, var(--primary-dark), var(--primary));
-        }
-      `}</style>
-    </div>
+        
+        {/* Input area */}
+        <div className="mt-4">
+          <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
+          <p className="text-xs text-center mt-2 text-gray-500 dark:text-gray-400">
+            Ask me anything about choosing and planning extracurricular activities for college applications
+          </p>
+        </div>
+      </div>
+    </main>
   );
 }

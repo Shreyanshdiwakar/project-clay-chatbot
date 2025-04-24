@@ -1,22 +1,59 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Message } from '@/types/chat';
+import { Message, ModelInfo, ChatResponse } from '@/types/chat';
 import { ChatMessage } from './ChatMessage';
 import { LoadingSpinner } from './LoadingSpinner';
+import { ApiKeySetupHelp } from './ApiKeySetupHelp';
+import { ThinkingAnimation } from './ThinkingAnimation';
 
 export const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: "Hello! I'm your academic counselor. I can help you plan extracurricular activities that align with your college goals. To get started, could you tell me what grade you're in and what your interests are?"
+      content: "Hello! I'm your academic counselor powered by DeepSeek r1. I can help you plan extracurricular activities that align with your college goals. To get started, could you tell me what grade you're in and what your interests are?"
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [apiKeyConfigured, setApiKeyConfigured] = useState<boolean | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [showThinking, setShowThinking] = useState(false);
+  const [thinkingSteps, setThinkingSteps] = useState<string[] | undefined>(undefined);
+  const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Check API configuration on load
+  useEffect(() => {
+    const checkApiConfig = async () => {
+      try {
+        const response = await fetch('/api/check-env');
+        if (response.ok) {
+          const data = await response.json();
+          setApiKeyConfigured(data.openrouterApiKey === 'set');
+          
+          if (data.openrouterApiKey !== 'set') {
+            // Add a warning message if API key is not configured
+            setMessages(prev => [
+              ...prev,
+              {
+                id: 'api-warning',
+                role: 'assistant',
+                content: "⚠️ Warning: The OpenRouter API key is not configured. Please add your API key to the .env.local file to use this chatbot. You can sign up for an API key at https://openrouter.ai."
+              }
+            ]);
+            setAuthError('API key is missing in the .env.local file');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check API configuration:', error);
+      }
+    };
+    
+    checkApiConfig();
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -32,7 +69,7 @@ export const ChatInterface = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, showThinking]);
 
   // Focus input on load
   useEffect(() => {
@@ -42,6 +79,29 @@ export const ChatInterface = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
+
+    // If API key is not configured, show a message
+    if (apiKeyConfigured === false) {
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'user',
+          content: input
+        },
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "I can't process your request because the OpenRouter API key is not configured. Please add your API key to the .env.local file and restart the application."
+        }
+      ]);
+      setInput('');
+      return;
+    }
+
+    // Clear any previous auth errors
+    setAuthError(null);
+    setModelInfo(null);
 
     // Create new user message
     const userMessage: Message = {
@@ -54,9 +114,22 @@ export const ChatInterface = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setLoading(true);
+    setShowThinking(true); // Show thinking animation
+
+    // Generate some initial thinking steps while waiting for API response
+    setThinkingSteps([
+      "Processing your question...",
+      "Analyzing context...",
+      "Retrieving relevant information..."
+    ]);
 
     try {
+      // Delay to allow thinking animation to show for at least 3 seconds
+      const startTime = Date.now();
+      
       // Send request to API
+      console.log('Sending message to API:', input);
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -65,32 +138,66 @@ export const ChatInterface = () => {
         body: JSON.stringify({ message: input }),
       });
 
-      const data = await response.json();
+      console.log('API response status:', response.status);
+      const data: ChatResponse = await response.json();
+      console.log('API response data:', data);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to get response');
+      // Update thinking steps if they're provided in the response
+      if (data.thinking && data.thinking.length > 0) {
+        setThinkingSteps(data.thinking);
       }
 
-      // Add assistant response to chat
+      // Store model information
+      if (data.model) {
+        setModelInfo(data.model);
+      }
+
+      // Calculate elapsed time and add delay if needed
+      const elapsedTime = Date.now() - startTime;
+      const minimumThinkingTime = 3000; // 3 seconds minimum
+      
+      if (elapsedTime < minimumThinkingTime) {
+        await new Promise(resolve => setTimeout(resolve, minimumThinkingTime - elapsedTime));
+      }
+
+      if (!response.ok) {
+        const errorMessage = data.error || data.message || 'Failed to get response';
+        console.error('API error:', errorMessage);
+        
+        // Check for authentication errors
+        if (errorMessage.includes('No auth credentials found') || 
+            errorMessage.includes('Authentication failed') || 
+            errorMessage.includes('401')) {
+          setAuthError(errorMessage);
+          setApiKeyConfigured(false);
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Add assistant response to chat with model information but without model tag
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.message
+        content: data.message,
+        modelInfo: data.model
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error details:', error);
       // Add error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again later.'
+        content: `I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your API key and try again.`
       };
       
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
+      setShowThinking(false); // Hide thinking animation
+      setThinkingSteps(undefined); // Clear thinking steps
       // Focus back on input
       setTimeout(() => {
         inputRef.current?.focus();
@@ -111,7 +218,9 @@ export const ChatInterface = () => {
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
-        {loading && <LoadingSpinner />}
+        {showThinking && <ThinkingAnimation thinkingSteps={thinkingSteps} />}
+        {loading && !showThinking && <LoadingSpinner />}
+        {authError && <ApiKeySetupHelp error={authError} />}
         <div ref={messagesEndRef} />
       </div>
       
@@ -141,7 +250,11 @@ export const ChatInterface = () => {
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 flex justify-between">
             <span>Press <kbd className="bg-gray-100 dark:bg-gray-700 px-1 rounded">Ctrl</kbd>+<kbd className="bg-gray-100 dark:bg-gray-700 px-1 rounded">Enter</kbd> to send</span>
-            {loading && <span>Thinking...</span>}
+            {loading && (
+              <span>
+                {showThinking ? `${modelInfo?.name || 'DeepSeek r1'} is thinking...` : "Loading..."}
+              </span>
+            )}
           </div>
         </div>
       </form>
