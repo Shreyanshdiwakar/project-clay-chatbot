@@ -155,7 +155,7 @@ export default function Home() {
           <div className="text-center my-12 max-w-3xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-800 dark:text-white">
               Any passion, any college.<br />
-              We're here for you.
+              We&apos;re here for you.
             </h1>
             <p className="text-lg mb-6 text-gray-600 dark:text-gray-300">
               Traditional college counselling is out of touch and expensive.<br />

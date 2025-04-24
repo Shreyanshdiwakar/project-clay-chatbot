@@ -131,7 +131,7 @@ export async function POST(request: Request) {
 // Generate simulated thinking steps based on the user's message
 function generateThinkingSteps(message: string): string[] {
   const lowerCaseMessage = message.toLowerCase();
-  let steps: string[] = [
+  const steps: string[] = [
     "Processing the user's question about extracurricular activities",
     "Accessing my knowledge about college applications and extracurricular activities",
     "Considering the most helpful and tailored response"

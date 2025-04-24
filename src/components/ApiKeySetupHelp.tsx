@@ -1,44 +1,54 @@
+'use client';
+
 import React from 'react';
 
-interface ApiKeySetupHelpProps {
-  error?: string;
-}
-
-export const ApiKeySetupHelp: React.FC<ApiKeySetupHelpProps> = ({ error }) => {
+export const ApiKeySetupHelp = () => {
   return (
-    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mt-4">
-      <h3 className="text-lg font-semibold text-red-800 dark:text-red-400 mb-2">
-        ⚠️ API Key Not Configured Correctly
-      </h3>
+    <div className="max-w-2xl mx-auto my-6 p-6 bg-gray-50 border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
+      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">
+        API Key Setup Required
+      </h2>
       
-      {error && (
-        <div className="mb-3 text-red-700 dark:text-red-300 text-sm bg-red-100 dark:bg-red-900/30 p-2 rounded border border-red-200 dark:border-red-800/50 font-mono">
-          {error}
-        </div>
-      )}
+      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-700/30 dark:text-yellow-300">
+        <p className="flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          This chatbot needs an OpenRouter API key to function
+        </p>
+      </div>
       
-      <p className="text-red-700 dark:text-red-300 mb-3">
-        To fix this issue, you need to set up your OpenRouter API key properly:
+      <p className="mb-4 text-gray-600 dark:text-gray-300">
+        Follow these steps to set up your API key:
       </p>
       
-      <ol className="list-decimal pl-5 mb-4 text-red-700 dark:text-red-300 space-y-2">
-        <li>Sign up at <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="underline">OpenRouter.ai</a> if you haven't already</li>
-        <li>Go to the <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline">API Keys section</a> and create a new key</li>
-        <li>Create or edit the <code className="bg-red-100 dark:bg-red-900/50 px-1 rounded">.env.local</code> file in the project root directory</li>
-        <li>Add your API key in this format:
-          <pre className="bg-red-100 dark:bg-red-900/50 p-2 rounded mt-1 font-mono text-sm">OPENROUTER_API_KEY=your_actual_api_key_here</pre>
+      <ol className="mb-6 pl-5 list-decimal space-y-3 text-gray-600 dark:text-gray-300">
+        <li>
+          <span className="font-semibold">Sign up for OpenRouter</span>: 
+          Visit <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">openrouter.ai</a> and create an account if you don&apos;t have one.
         </li>
-        <li>Restart the development server after saving the file</li>
+        <li>
+          <span className="font-semibold">Get your API key</span>: 
+          Once logged in, go to your account settings to find or create an API key.
+        </li>
+        <li>
+          <span className="font-semibold">Create a .env.local file</span>: 
+          In the root directory of this project, create a file named <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">.env.local</code>
+        </li>
+        <li>
+          <span className="font-semibold">Add your API key</span>: 
+          In the .env.local file, add this line: <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">OPENROUTER_API_KEY=your_api_key_here</code>
+        </li>
+        <li>
+          <span className="font-semibold">Restart the development server</span>: 
+          If you&apos;re running the server locally, restart it to apply the changes.
+        </li>
       </ol>
       
-      <div className="bg-red-100 dark:bg-red-900/40 p-3 rounded-md">
-        <h4 className="font-semibold text-red-800 dark:text-red-400 mb-1">Common Issues:</h4>
-        <ul className="list-disc pl-5 text-red-700 dark:text-red-300 text-sm space-y-1">
-          <li>Make sure you replaced <code className="bg-red-200 dark:bg-red-900/60 px-1 rounded">your_actual_api_key_here</code> with your real API key</li>
-          <li>Check that your API key hasn't expired</li>
-          <li>Verify you have sufficient credits in your OpenRouter account</li>
-          <li>Ensure there are no spaces or quotes around your API key</li>
-        </ul>
+      <div className="text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-4">
+        <p>
+          Note: Never commit your API keys to version control. The .env.local file is automatically ignored by Git.
+        </p>
       </div>
     </div>
   );
