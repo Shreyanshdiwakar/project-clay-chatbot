@@ -53,6 +53,7 @@ export default function Home() {
       let modelInfo: ModelInfo | undefined = undefined;
       if (data.model) {
         modelInfo = {
+          id: data.model.id || 'model-' + Date.now(),
           name: data.model.name,
           description: data.model.description,
           features: data.model.features,
@@ -90,11 +91,11 @@ export default function Home() {
 
   return (
     <main className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <header className="bg-black text-white py-4 px-6 flex justify-between items-center">
+      {/* Header - Made sticky */}
+      <header className="bg-black text-white py-4 px-6 flex justify-between items-center sticky top-0 z-50 shadow-md">
         <div className="flex items-center">
           <Image 
-            src="/projectclay-logo.svg"
+            src="/projectclay.jpg"
             alt="Project Clay Logo"
             width={120}
             height={40}
@@ -102,16 +103,49 @@ export default function Home() {
           />
         </div>
         <div className="flex items-center space-x-4">
-          <button className="text-sm font-medium hover:text-blue-400 transition-colors">Browse mentors</button>
-          <button className="text-sm font-medium hover:text-blue-400 transition-colors">Try 10</button>
-          <button className="text-sm font-medium hover:text-blue-400 transition-colors">Book a Call</button>
-          <button className="text-sm font-medium hover:text-blue-400 transition-colors">Join Community</button>
-          <button className="bg-white text-black px-4 py-1.5 rounded-md text-sm font-medium flex items-center hover:bg-gray-100 transition-colors">
+          <a 
+            href="https://www.projectclay.com/meet-your-mentors" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm font-medium hover:text-blue-400 transition-colors"
+          >
+            Browse mentors
+          </a>
+          <a 
+            href="https://docs.google.com/forms/d/e/1FAIpQLSfyQUZWh8VcY1Zx7S8fnS45E_3I77kEGfh30Wc0v5fJzy3REw/viewform" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm font-medium hover:text-blue-400 transition-colors"
+          >
+            Ivy 10
+          </a>
+          <a 
+            href="https://calendly.com/dyumnamadan01/intro-meeting?month=2025-04" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm font-medium hover:text-blue-400 transition-colors"
+          >
+            Book a Call
+          </a>
+          <a 
+            href="https://chat.whatsapp.com/KfU9XRXYLIJIGkfuJsgZAj" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm font-medium hover:text-blue-400 transition-colors"
+          >
+            Join Community
+          </a>
+          <a 
+            href="https://www.projectclay.com/meet-your-mentors#registrationform" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="bg-white text-black px-4 py-1.5 rounded-md text-sm font-medium flex items-center hover:bg-gray-100 transition-colors"
+          >
             Register now
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1">
               <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
             </svg>
-          </button>
+          </a>
         </div>
       </header>
 
@@ -177,8 +211,8 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </div>
         
-        {/* Input area */}
-        <div className="mt-4">
+        {/* Input area - Made sticky */}
+        <div className="sticky bottom-0 left-0 right-0 bg-gray-50 dark:bg-gray-900 pt-4 pb-4 border-t border-gray-200 dark:border-gray-700 shadow-md z-10">
           <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
           <p className="text-xs text-center mt-2 text-gray-500 dark:text-gray-400">
             Ask me anything about choosing and planning extracurricular activities for college applications
