@@ -8,18 +8,16 @@ interface ThinkingIndicatorProps {
 
 export const ThinkingIndicator = ({ steps }: ThinkingIndicatorProps) => {
   const [visibleSteps, setVisibleSteps] = useState<number>(0);
-  const [dots, setDots] = useState<string>('');
+  const [dotCount, setDotCount] = useState<number>(0);
   
-  // Animate the dots
+  // Simple text-based animation sequence with consistent dots
   useEffect(() => {
-    if (steps.length === 0) return;
+    const animation = setInterval(() => {
+      setDotCount(prev => (prev + 1) % 4);
+    }, 400); // Faster dot animation for better feedback
     
-    const dotInterval = setInterval(() => {
-      setDots(prev => (prev.length >= 3 ? '' : prev + '.'));
-    }, 500);
-    
-    return () => clearInterval(dotInterval);
-  }, [steps]);
+    return () => clearInterval(animation);
+  }, []);
   
   // Gradually reveal steps
   useEffect(() => {
@@ -32,38 +30,44 @@ export const ThinkingIndicator = ({ steps }: ThinkingIndicatorProps) => {
         }
         return prev;
       });
-    }, 1000);
+    }, 600);
     
     return () => clearInterval(stepsInterval);
   }, [steps]);
   
+  // Render dots for animation
+  const renderDots = () => {
+    return '.'.repeat(dotCount);
+  };
+
   if (steps.length === 0) {
     return (
-      <div className="flex items-center space-x-2">
-        <span className="text-indigo-600 dark:text-indigo-400 font-medium">Thinking</span>
-        <span className="w-12 text-indigo-600 dark:text-indigo-400">{dots}</span>
+      <div className="flex items-center">
+        <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+          thinking<span className="inline-block min-w-8">{renderDots()}</span>
+        </span>
       </div>
     );
   }
   
   return (
     <div className="space-y-2">
-      <div className="flex items-center space-x-2 mb-3">
-        <span className="text-indigo-600 dark:text-indigo-400 font-medium">Thinking</span>
-        <span className="w-12 text-indigo-600 dark:text-indigo-400">{dots}</span>
+      <div className="flex items-center mb-2">
+        <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+          thinking<span className="inline-block min-w-8">{renderDots()}</span>
+        </span>
       </div>
-      <ul className="space-y-2 pl-1">
-        {steps.slice(0, visibleSteps).map((step, index) => (
-          <li key={index} className="flex items-start space-x-2 animate-fadeIn">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500 dark:text-indigo-400 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+      
+      {/* Only show up to 3 steps at a time to avoid feeling slow */}
+      <ul className="space-y-1 pl-1">
+        {steps.slice(Math.max(0, visibleSteps - 2), visibleSteps).map((step, index) => (
+          <li key={index} className="flex items-start space-x-2 animate-fadeIn opacity-80">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500 dark:text-indigo-400 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <span className="text-gray-700 dark:text-gray-300 text-sm">{step}</span>
+            <span className="text-gray-700 dark:text-gray-300 text-xs">{step}</span>
           </li>
         ))}
-        {visibleSteps < steps.length && (
-          <li className="pl-7 text-gray-500 dark:text-gray-400 text-sm">{dots}</li>
-        )}
       </ul>
     </div>
   );

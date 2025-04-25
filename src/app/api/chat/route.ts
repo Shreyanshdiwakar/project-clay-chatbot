@@ -136,65 +136,38 @@ export async function POST(request: Request) {
   }
 }
 
-// Generate simulated thinking steps based on the user's message
+// Generate simpler thinking steps based on the user's message
 function generateThinkingSteps(message: string, pdfContent?: string | null): string[] {
   const lowerCaseMessage = message.toLowerCase();
+  // Generate a smaller set of steps that appear quicker
   const steps: string[] = [
-    "Processing the user's question about extracurricular activities",
-    "Accessing my knowledge about college applications and extracurricular activities",
+    "Processing your question..."
   ];
 
-  // Add PDF-specific thinking steps
+  // Add PDF-specific thinking steps - but keep it brief
   if (pdfContent) {
-    steps.push("Analyzing the uploaded Common App PDF content");
-    steps.push("Extracting relevant information from the PDF");
-    steps.push("Identifying the student's background, interests, and accomplishments");
-    steps.push("Tailoring response based on the student's specific profile");
-  } else {
-    steps.push("Considering the most helpful and tailored response");
+    steps.push("Analyzing your profile data");
   }
 
-  // Add more specific thinking steps based on message content
+  // Add just one specific step based on message content
   if (lowerCaseMessage.includes('sport') || lowerCaseMessage.includes('athletic')) {
-    steps.push("Retrieving information about sports and athletic extracurricular activities");
-    steps.push("Considering both team and individual sports options");
-    steps.push("Evaluating how sports demonstrate leadership and teamwork skills to colleges");
+    steps.push("Finding sports and athletic activities");
+  } else if (lowerCaseMessage.includes('leadership') || lowerCaseMessage.includes('president') || lowerCaseMessage.includes('club')) {
+    steps.push("Identifying leadership opportunities");
+  } else if (lowerCaseMessage.includes('volunteer') || lowerCaseMessage.includes('community') || lowerCaseMessage.includes('service')) {
+    steps.push("Exploring community service options");
+  } else if (lowerCaseMessage.includes('research') || lowerCaseMessage.includes('science') || lowerCaseMessage.includes('lab')) {
+    steps.push("Exploring research opportunities");
+  } else if (lowerCaseMessage.includes('art') || lowerCaseMessage.includes('music') || lowerCaseMessage.includes('creative')) {
+    steps.push("Finding artistic and creative activities");
+  } else if (lowerCaseMessage.includes('internship') || lowerCaseMessage.includes('job') || lowerCaseMessage.includes('work')) {
+    steps.push("Researching internship opportunities");
+  } else {
+    steps.push("Preparing personalized recommendations");
   }
 
-  if (lowerCaseMessage.includes('leadership') || lowerCaseMessage.includes('president') || lowerCaseMessage.includes('club')) {
-    steps.push("Analyzing leadership opportunities in student organizations");
-    steps.push("Evaluating how leadership positions demonstrate initiative and responsibility");
-    steps.push("Considering both starting new clubs and joining existing organizations");
-  }
-
-  if (lowerCaseMessage.includes('volunteer') || lowerCaseMessage.includes('community') || lowerCaseMessage.includes('service')) {
-    steps.push("Analyzing community service and volunteer opportunities");
-    steps.push("Evaluating how volunteer work demonstrates social responsibility and empathy");
-    steps.push("Considering both local and global volunteer opportunities");
-  }
-
-  if (lowerCaseMessage.includes('research') || lowerCaseMessage.includes('science') || lowerCaseMessage.includes('lab')) {
-    steps.push("Evaluating research and academic opportunities outside the classroom");
-    steps.push("Considering university programs, science competitions, and independent projects");
-    steps.push("Analyzing how research experience demonstrates intellectual curiosity and initiative");
-  }
-
-  if (lowerCaseMessage.includes('art') || lowerCaseMessage.includes('music') || lowerCaseMessage.includes('creative')) {
-    steps.push("Retrieving information about artistic and creative extracurricular activities");
-    steps.push("Analyzing opportunities in visual arts, music, theater, writing, and other creative fields");
-    steps.push("Evaluating how artistic pursuits demonstrate creativity and dedication");
-  }
-
-  if (lowerCaseMessage.includes('internship') || lowerCaseMessage.includes('job') || lowerCaseMessage.includes('work')) {
-    steps.push("Considering work experience and internship opportunities");
-    steps.push("Analyzing how work experience demonstrates responsibility and real-world skills");
-    steps.push("Evaluating both paid and unpaid professional development opportunities");
-  }
-
-  // Add some final steps
-  steps.push("Formulating a personalized response based on the student's interests");
-  steps.push("Structuring my answer to be helpful, informative, and actionable");
-  steps.push("Finalizing response with specific suggestions and follow-up questions");
+  // One final step
+  steps.push("Generating your response");
 
   return steps;
 }
