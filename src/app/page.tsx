@@ -124,13 +124,19 @@ export default function Home() {
       {/* Header - Made sticky */}
       <header className="bg-black text-white py-4 px-6 flex justify-between items-center sticky top-0 z-50 shadow-md">
         <div className="flex items-center">
-          <Image 
-            src="/projectclay.jpg"
-            alt="Project Clay Logo"
-            width={120}
-            height={40}
-            className="mr-2"
-          />
+          <a 
+            href="https://www.projectclay.com/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            <Image 
+              src="/projectclay.jpg"
+              alt="Project Clay Logo"
+              width={120}
+              height={40}
+              className="mr-2"
+            />
+          </a>
         </div>
         <div className="flex items-center space-x-4">
           <a 
