@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('Request body:', body);
     
-    const { message } = body;
+    const { message, pdfContent } = body;
 
     if (!message) {
       console.error('Error: Message is required');
@@ -87,16 +87,16 @@ export async function POST(request: Request) {
     }
 
     // Generate thinking steps for the response - these are simulated as the API doesn't provide them
-    const thinkingSteps = generateThinkingSteps(message);
+    const thinkingSteps = generateThinkingSteps(message, pdfContent);
 
     // Try with primary model first
-    let botResponse = await tryWithModel(PRIMARY_MODEL, message, openrouterApiKey);
+    let botResponse = await tryWithModel(PRIMARY_MODEL, message, openrouterApiKey, pdfContent);
     let modelUsed = PRIMARY_MODEL;
     
     // If primary model fails, try with fallback model
     if (!botResponse.success && botResponse.error) {
       console.log(`Primary model (${PRIMARY_MODEL}) failed with error: ${botResponse.error}. Trying fallback model...`);
-      botResponse = await tryWithModel(FALLBACK_MODEL, message, openrouterApiKey);
+      botResponse = await tryWithModel(FALLBACK_MODEL, message, openrouterApiKey, pdfContent);
       if (botResponse.success) {
         modelUsed = FALLBACK_MODEL;
       }
@@ -129,13 +129,22 @@ export async function POST(request: Request) {
 }
 
 // Generate simulated thinking steps based on the user's message
-function generateThinkingSteps(message: string): string[] {
+function generateThinkingSteps(message: string, pdfContent?: string | null): string[] {
   const lowerCaseMessage = message.toLowerCase();
   const steps: string[] = [
     "Processing the user's question about extracurricular activities",
     "Accessing my knowledge about college applications and extracurricular activities",
-    "Considering the most helpful and tailored response"
   ];
+
+  // Add PDF-specific thinking steps
+  if (pdfContent) {
+    steps.push("Analyzing the uploaded Common App PDF content");
+    steps.push("Extracting relevant information from the PDF");
+    steps.push("Identifying the student's background, interests, and accomplishments");
+    steps.push("Tailoring response based on the student's specific profile");
+  } else {
+    steps.push("Considering the most helpful and tailored response");
+  }
 
   // Add more specific thinking steps based on message content
   if (lowerCaseMessage.includes('sport') || lowerCaseMessage.includes('athletic')) {
@@ -182,19 +191,15 @@ function generateThinkingSteps(message: string): string[] {
   return steps;
 }
 
-async function tryWithModel(model: string, message: string, apiKey: string) {
+async function tryWithModel(model: string, message: string, apiKey: string, pdfContent?: string | null) {
   try {
     console.log(`Sending request to OpenRouter API using ${model}...`);
     
     // Log API key length and first/last 3 chars for debugging (safely)
     console.log(`API key length: ${apiKey.length}, prefix: ${apiKey.substring(0, 3)}, suffix: ${apiKey.substring(apiKey.length - 3)}`);
     
-    const requestBody = {
-      model: model,
-      messages: [
-        {
-          role: 'system',
-          content: `You are a friendly academic counselor helping high school students plan extracurricular activities to improve their college applications. Ask follow-up questions if needed.
+    // Create system prompt, adding PDF content if available
+    let systemPrompt = `You are a friendly academic counselor helping high school students plan extracurricular activities to improve their college applications. Ask follow-up questions if needed.
 
 Format your responses with clean, readable Markdown:
 - Use **bold text** for section headings and important points
@@ -213,7 +218,29 @@ Example formatting structure:
 **Another Section**
 1. First step
 2. Second step
-3. Third step`
+3. Third step`;
+
+    // If PDF content is available, add it to the system prompt
+    if (pdfContent) {
+      // Truncate PDF content if it's too long (to fit within token limits)
+      const maxPdfLength = 12000; // Arbitrary limit to avoid token issues
+      const truncatedPdf = pdfContent.length > maxPdfLength
+        ? pdfContent.substring(0, maxPdfLength) + "... [PDF content truncated]"
+        : pdfContent;
+    
+      systemPrompt += `\n\n**IMPORTANT - STUDENT PROFILE FROM COMMON APP PDF:**
+      
+${truncatedPdf}
+
+Use the above Common App information to provide personalized advice specifically tailored to this student's background, interests, and accomplishments. Reference specific details from their profile when relevant.`;
+    }
+
+    const requestBody = {
+      model: model,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt
         },
         {
           role: 'user',
@@ -237,7 +264,16 @@ Example formatting structure:
       ...headers,
       'Authorization': 'Bearer ***' // Mask the actual token in logs
     }));
-    console.log('OpenRouter request body:', JSON.stringify(requestBody));
+    console.log('OpenRouter request body:', JSON.stringify({
+      ...requestBody,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt.substring(0, 100) + '... [truncated for logs]'
+        },
+        requestBody.messages[1]
+      ]
+    }));
     
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',

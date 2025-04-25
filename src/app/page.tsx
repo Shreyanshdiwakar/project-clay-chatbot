@@ -6,12 +6,14 @@ import { ChatMessage } from '@/components/ChatMessage';
 import { Message, ModelInfo } from '@/types/chat';
 import Image from 'next/image';
 import { ThinkingIndicator } from '@/components/ThinkingIndicator';
+import { FileUpload } from '@/components/FileUpload';
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pdfContent, setPdfContent] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
@@ -39,7 +41,10 @@ export default function Home() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content })
+        body: JSON.stringify({ 
+          message: content,
+          pdfContent: pdfContent // Pass the PDF content if available
+        })
       });
       
       if (!response.ok) {
@@ -87,6 +92,24 @@ export default function Home() {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       console.error('Error sending message:', err);
     }
+  };
+
+  const handlePdfProcess = (pdfText: string) => {
+    setPdfContent(pdfText);
+    
+    // Add a system message to inform the user
+    const systemMessage: Message = {
+      id: Date.now().toString(),
+      content: "✅ **Common App PDF uploaded successfully!**\n\nI've analyzed your document and can now provide personalized advice based on your profile. Feel free to ask questions about extracurricular activities that would complement your application.",
+      role: 'assistant',
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, systemMessage]);
+  };
+
+  const handlePdfError = (errorMsg: string) => {
+    setError(errorMsg);
   };
 
   return (
@@ -174,6 +197,21 @@ export default function Home() {
           </div>
         )}
 
+        {/* PDF Upload component - only show if no conversation started */}
+        {messages.length === 0 && (
+          <div className="mt-4 text-center">
+            <p className="text-gray-600 dark:text-gray-300 mb-3">
+              Upload your Common App PDF for personalized guidance (optional)
+            </p>
+            <div className="flex justify-center">
+              <FileUpload 
+                onFileProcess={handlePdfProcess}
+                onError={handlePdfError}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Chat messages */}
         <div className="flex-1 overflow-y-auto">
           {messages.map((message) => (
@@ -215,7 +253,9 @@ export default function Home() {
         <div className="sticky bottom-0 left-0 right-0 bg-gray-50 dark:bg-gray-900 pt-4 pb-4 border-t border-gray-200 dark:border-gray-700 shadow-md z-10">
           <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
           <p className="text-xs text-center mt-2 text-gray-500 dark:text-gray-400">
-            Ask me anything about choosing and planning extracurricular activities for college applications
+            {pdfContent 
+              ? "Ask personalized questions based on your Common App profile" 
+              : "Ask me anything about choosing and planning extracurricular activities for college applications"}
           </p>
         </div>
       </div>
