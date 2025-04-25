@@ -1,14 +1,18 @@
 /** @type {import('next').NextConfig} */
 
 const nextConfig = {
-  // Ensure we're not using static exports for Vercel
-  output: "standalone",
+  // Use serverless output format which is more compatible with Vercel
+  output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
   
   // Basic configuration
   reactStrictMode: true,
   
   // For proper routing
   trailingSlash: false,
+  
+  // Optimize for production
+  compress: true,
+  poweredByHeader: false,
   
   // Ensure images work
   images: {
@@ -19,6 +23,12 @@ const nextConfig = {
         hostname: '**',
       },
     ],
+  },
+  
+  // Explicitly set the webpack config
+  webpack: (config, { isServer }) => {
+    // You could add custom webpack configurations here if needed
+    return config;
   },
 };
 

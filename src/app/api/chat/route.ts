@@ -65,14 +65,22 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get API key and validate
-    const openrouterApiKey = process.env.OPENROUTER_API_KEY;
+    // Get API key and validate - with better error handling for Vercel
+    const openrouterApiKey = 
+      process.env.OPENROUTER_API_KEY || 
+      process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || 
+      process.env.VERCEL_OPENROUTER_API_KEY;
+
     console.log('API key present:', openrouterApiKey ? 'Yes' : 'No');
     
     if (!openrouterApiKey) {
       console.error('Error: OpenRouter API key is not configured');
       return NextResponse.json(
-        { error: 'OpenRouter API key is not configured. Please add OPENROUTER_API_KEY to your .env.local file.' },
+        { 
+          error: 'OpenRouter API key is not configured. Please add OPENROUTER_API_KEY to your environment variables.',
+          environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'unknown',
+          deployed: !!process.env.VERCEL
+        },
         { status: 500 }
       );
     }

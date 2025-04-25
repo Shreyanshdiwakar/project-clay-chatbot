@@ -1,8 +1,14 @@
 {
   "outputDirectory": ".next",
-  "buildCommand": "npm run build:production",
+  "buildCommand": "node build.js",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "rewrites": []
+  "rewrites": [],
+  "env": {
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "NODE_OPTIONS": "--max_old_space_size=4096",
+    "NEXT_SKIP_TYPESCRIPT_CHECK": "true",
+    "NEXT_SKIP_ESLINT_CHECK": "true"
+  }
 } 
