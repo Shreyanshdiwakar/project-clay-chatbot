@@ -258,7 +258,21 @@ export default function Home() {
         
         {/* Input area - Made sticky */}
         <div className="sticky bottom-0 left-0 right-0 bg-gray-50 dark:bg-gray-900 pt-4 pb-4 border-t border-gray-200 dark:border-gray-700 shadow-md z-10">
-          <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
+          <div className="flex items-start mb-2">
+            {/* PDF Upload button during conversation */}
+            {messages.length > 0 && !pdfContent && (
+              <div className="mr-2">
+                <FileUpload 
+                  onFileProcess={handlePdfProcess}
+                  onError={handlePdfError}
+                  isCompact={true}
+                />
+              </div>
+            )}
+            <div className="flex-1">
+              <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
+            </div>
+          </div>
           <p className="text-xs text-center mt-2 text-gray-500 dark:text-gray-400">
             {pdfContent 
               ? "Ask personalized questions based on your Common App profile" 
