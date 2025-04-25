@@ -5,18 +5,13 @@
  * It uses the pdfreader library
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-
 import { NextResponse } from 'next/server';
-// @ts-expect-error - pdfreader lacks proper TypeScript definitions
 import { PdfReader } from 'pdfreader';
 
-export async function POST(request: Request) {
+export async function POST(request) {
   try {
     const formData = await request.formData();
-    const pdfFile = formData.get('pdf') as File;
+    const pdfFile = formData.get('pdf');
 
     if (!pdfFile) {
       return NextResponse.json(
@@ -58,7 +53,7 @@ export async function POST(request: Request) {
 }
 
 // Extract text from PDF file
-async function extractTextFromPdf(file: File): Promise<string> {
+async function extractTextFromPdf(file) {
   try {
     // Convert the File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
@@ -81,11 +76,11 @@ async function extractTextFromPdf(file: File): Promise<string> {
     
     // Use pdfreader to extract text
     return new Promise((resolve, reject) => {
-      const pages: Record<number, string[]> = {};
+      const pages = {};
 
       const reader = new PdfReader();
       
-      reader.parseBuffer(Buffer.from(arrayBuffer), (err: any, item: any) => {
+      reader.parseBuffer(Buffer.from(arrayBuffer), (err, item) => {
         if (err) {
           console.error("PDF parsing error:", err);
           reject(err);
