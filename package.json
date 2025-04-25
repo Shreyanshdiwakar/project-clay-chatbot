@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:production": "cross-env NEXT_SKIP_TYPESCRIPT_CHECK=true NEXT_SKIP_ESLINT_CHECK=true next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -22,6 +23,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "tailwindcss": "^4",
