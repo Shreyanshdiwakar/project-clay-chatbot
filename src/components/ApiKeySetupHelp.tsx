@@ -2,7 +2,11 @@
 
 import React from 'react';
 
-export const ApiKeySetupHelp = () => {
+interface ApiKeySetupHelpProps {
+  error?: string;
+}
+
+export const ApiKeySetupHelp = ({ error }: ApiKeySetupHelpProps) => {
   return (
     <div className="max-w-2xl mx-auto my-6 p-6 bg-gray-50 border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
       <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">
@@ -17,6 +21,17 @@ export const ApiKeySetupHelp = () => {
           This chatbot needs an OpenRouter API key to function
         </p>
       </div>
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-800 dark:bg-red-900/20 dark:border-red-700/30 dark:text-red-300">
+          <p className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            Error: {error}
+          </p>
+        </div>
+      )}
       
       <p className="mb-4 text-gray-600 dark:text-gray-300">
         Follow these steps to set up your API key:

@@ -4,13 +4,18 @@ import { useState, useEffect, useRef } from 'react';
 
 interface ThinkingAnimationProps {
   message?: string;
+  thinkingSteps?: string[];
 }
 
 // ThinkingAnimation simulates terminal-like typing, showing an AI thought process
-export const ThinkingAnimation = ({ message = "Deep thinking in progress..." }: ThinkingAnimationProps) => {
+export const ThinkingAnimation = ({ 
+  message = "Deep thinking in progress...",
+  thinkingSteps = []
+}: ThinkingAnimationProps) => {
   const [displayedText, setDisplayedText] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
   const fullTextRef = useRef(message);
+  const displayedStepsRef = useRef<Set<string>>(new Set());
 
   // Typing animation effect
   useEffect(() => {
@@ -32,18 +37,32 @@ export const ThinkingAnimation = ({ message = "Deep thinking in progress..." }: 
     return () => clearTimeout(timeout);
   }, [displayedText]);
 
-  // Simulate processing intermediate computational steps
+  // Display thinking steps if provided
   useEffect(() => {
-    // Every so often, add a computation step
-    const interval = setInterval(() => {
-      if (Math.random() > 0.7 && displayedText.length > 10) {
-        const currentLine = `\n> ${getRandomComputationStep()}`;
-        fullTextRef.current += currentLine;
-      }
-    }, 1200);
-    
-    return () => clearInterval(interval);
-  }, [displayedText]);
+    if (thinkingSteps.length === 0) {
+      // If no thinking steps provided, use random ones
+      const interval = setInterval(() => {
+        if (Math.random() > 0.7 && displayedText.length > 10) {
+          const currentLine = `\n> ${getRandomComputationStep()}`;
+          fullTextRef.current += currentLine;
+        }
+      }, 1200);
+      
+      return () => clearInterval(interval);
+    } else {
+      // If thinking steps provided, display them sequentially
+      const interval = setInterval(() => {
+        const unshownSteps = thinkingSteps.filter(step => !displayedStepsRef.current.has(step));
+        if (unshownSteps.length > 0) {
+          const step = unshownSteps[0];
+          displayedStepsRef.current.add(step);
+          fullTextRef.current += `\n> ${step}`;
+        }
+      }, 1200);
+
+      return () => clearInterval(interval);
+    }
+  }, [displayedText, thinkingSteps]);
 
   // Blinking cursor effect
   useEffect(() => {
