@@ -5,8 +5,11 @@
  * It uses the pdfreader library
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { NextResponse } from 'next/server';
-// @ts-ignore -- pdfreader lacks proper TypeScript definitions
+// @ts-ignore
 import { PdfReader } from 'pdfreader';
 
 export async function POST(request: Request) {
@@ -81,9 +84,7 @@ async function extractTextFromPdf(file: File): Promise<string> {
 
       const reader = new PdfReader();
       
-      // Using Function-style cast to avoid TypeScript errors
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      Function.prototype.call.call(reader.parseBuffer, reader, Buffer.from(arrayBuffer), function(err: unknown, item: any) {
+      reader.parseBuffer(Buffer.from(arrayBuffer), (err: any, item: any) => {
         if (err) {
           console.error("PDF parsing error:", err);
           reject(err);

@@ -1,6 +1,6 @@
 {
   "outputDirectory": ".next",
-  "buildCommand": "node build.js",
+  "buildCommand": "npm run build:production",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
