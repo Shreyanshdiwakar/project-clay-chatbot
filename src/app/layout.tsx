@@ -19,6 +19,17 @@ export const metadata: Metadata = {
   description: "Get personalized guidance on extracurricular activities to enhance your college applications",
   keywords: ["academic counseling", "college prep", "extracurricular planning", "AI advisor"],
   authors: [{ name: "Project Clay" }],
+  icons: {
+    icon: [
+      { url: '/projectclay-logo.svg', sizes: '32x32' },
+      { url: '/projectclay-logo.svg', sizes: '64x64' },
+      { url: '/projectclay-logo.svg', sizes: '96x96' }
+    ],
+    apple: [
+      { url: '/projectclay.jpg', sizes: '180x180' }
+    ],
+    shortcut: [{ url: '/projectclay-logo.svg' }],
+  },
 };
 
 export default function RootLayout({
@@ -28,6 +39,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
+      <head>
+        {/* Primary favicon */}
+        <link rel="icon" href="/projectclay-logo.svg" sizes="32x32" />
+        
+        {/* Fallback for older browsers */}
+        <link rel="alternate icon" href="/favicon.ico" sizes="48x48" />
+        
+        {/* Apple Touch Icon for iOS devices */}
+        <link rel="apple-touch-icon" href="/projectclay.jpg" sizes="180x180" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
       >

@@ -10,16 +10,14 @@ export const ThinkingIndicator = ({ steps }: ThinkingIndicatorProps) => {
   const [visibleSteps, setVisibleSteps] = useState<number>(0);
   const [dotCount, setDotCount] = useState<number>(0);
   
-  // Simple text-based animation sequence with consistent dots
   useEffect(() => {
     const animation = setInterval(() => {
       setDotCount(prev => (prev + 1) % 4);
-    }, 400); // Faster dot animation for better feedback
+    }, 400);
     
     return () => clearInterval(animation);
   }, []);
   
-  // Gradually reveal steps
   useEffect(() => {
     if (steps.length === 0) return;
     
@@ -35,7 +33,6 @@ export const ThinkingIndicator = ({ steps }: ThinkingIndicatorProps) => {
     return () => clearInterval(stepsInterval);
   }, [steps]);
   
-  // Render dots for animation
   const renderDots = () => {
     return '.'.repeat(dotCount);
   };
@@ -58,7 +55,6 @@ export const ThinkingIndicator = ({ steps }: ThinkingIndicatorProps) => {
         </span>
       </div>
       
-      {/* Only show up to 3 steps at a time to avoid feeling slow */}
       <ul className="space-y-1 pl-1">
         {steps.slice(Math.max(0, visibleSteps - 2), visibleSteps).map((step, index) => (
           <li key={index} className="flex items-start space-x-2 animate-fadeIn opacity-80">

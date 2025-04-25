@@ -25,7 +25,7 @@ export const ChatInterface = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Check API configuration on load
+
   useEffect(() => {
     const checkApiConfig = async () => {
       try {
@@ -35,13 +35,13 @@ export const ChatInterface = () => {
           setApiKeyConfigured(data.openrouterApiKey === 'set');
           
           if (data.openrouterApiKey !== 'set') {
-            // Add a warning message if API key is not configured
+
             setMessages(prev => [
               ...prev,
               {
                 id: 'api-warning',
                 role: 'assistant',
-                content: "⚠️ Warning: The OpenRouter API key is not configured. Please add your API key to the .env.local file to use this chatbot. You can sign up for an API key at https://openrouter.ai."
+
               }
             ]);
             setAuthError('API key is missing in the .env.local file');
@@ -55,7 +55,7 @@ export const ChatInterface = () => {
     checkApiConfig();
   }, []);
 
-  // Auto-resize textarea
+
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = 'auto';
@@ -71,7 +71,7 @@ export const ChatInterface = () => {
     scrollToBottom();
   }, [messages, showThinking]);
 
-  // Focus input on load
+
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -80,7 +80,7 @@ export const ChatInterface = () => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
-    // If API key is not configured, show a message
+
     if (apiKeyConfigured === false) {
       setMessages(prev => [
         ...prev,
@@ -99,24 +99,24 @@ export const ChatInterface = () => {
       return;
     }
 
-    // Clear any previous auth errors
+
     setAuthError(null);
     setModelInfo(null);
 
-    // Create new user message
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: input
     };
 
-    // Add user message to chat
+
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setLoading(true);
-    setShowThinking(true); // Show thinking animation
 
-    // Generate some initial thinking steps while waiting for API response
+
+
     setThinkingSteps([
       "Processing your question...",
       "Analyzing context...",
@@ -124,10 +124,10 @@ export const ChatInterface = () => {
     ]);
 
     try {
-      // Delay to allow thinking animation to show for at least 3 seconds
+
       const startTime = Date.now();
       
-      // Send request to API
+
       console.log('Sending message to API:', input);
       
       const response = await fetch('/api/chat', {
@@ -142,19 +142,19 @@ export const ChatInterface = () => {
       const data: ChatResponse = await response.json();
       console.log('API response data:', data);
 
-      // Update thinking steps if they're provided in the response
+
       if (data.thinking && data.thinking.length > 0) {
         setThinkingSteps(data.thinking);
       }
 
-      // Store model information
+
       if (data.model) {
         setModelInfo(data.model);
       }
 
-      // Calculate elapsed time and add delay if needed
+
       const elapsedTime = Date.now() - startTime;
-      const minimumThinkingTime = 3000; // 3 seconds minimum
+
       
       if (elapsedTime < minimumThinkingTime) {
         await new Promise(resolve => setTimeout(resolve, minimumThinkingTime - elapsedTime));
@@ -164,7 +164,7 @@ export const ChatInterface = () => {
         const errorMessage = data.error || data.message || 'Failed to get response';
         console.error('API error:', errorMessage);
         
-        // Check for authentication errors
+
         if (errorMessage.includes('No auth credentials found') || 
             errorMessage.includes('Authentication failed') || 
             errorMessage.includes('401')) {
@@ -175,7 +175,7 @@ export const ChatInterface = () => {
         throw new Error(errorMessage);
       }
 
-      // Add assistant response to chat with model information but without model tag
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -186,7 +186,7 @@ export const ChatInterface = () => {
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error details:', error);
-      // Add error message
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -196,16 +196,16 @@ export const ChatInterface = () => {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
-      setShowThinking(false); // Hide thinking animation
-      setThinkingSteps(undefined); // Clear thinking steps
-      // Focus back on input
+
+
+
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
     }
   };
 
-  // Handle Ctrl+Enter to submit
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       handleSubmit(e);
@@ -243,7 +243,7 @@ export const ChatInterface = () => {
               className="absolute right-2 bottom-2 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Send message"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+
                 <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
               </svg>
             </button>
