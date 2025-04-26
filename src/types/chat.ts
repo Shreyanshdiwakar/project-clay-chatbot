@@ -1,23 +1,22 @@
-export interface ModelInfo {
-  id: string;
-  name: string;
-  description: string;
-  features: string[];
-  developer: string;
-  parameters: string;
-}
+/**
+ * Chat Types for Client Components
+ */
 
+import { ModelInfo } from '@/services/openrouter';
+import type { ChatResponse } from './api';
+
+/**
+ * Chat message type for the UI
+ */
 export interface Message {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
-  id: string;
   modelInfo?: ModelInfo;
   timestamp?: Date;
 }
 
-export interface ChatResponse {
-  message: string;
-  model?: ModelInfo;
-  thinking?: string[];
-  error?: string;
-} 
+/**
+ * Export relevant types from API
+ */
+export type { ChatResponse }; 
