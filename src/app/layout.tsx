@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full dark" suppressHydrationWarning>
       <head>
         {/* Primary favicon */}
         <link rel="icon" href="/projectclay-logo.svg" sizes="32x32" />
@@ -49,10 +50,15 @@ export default function RootLayout({
         {/* Apple Touch Icon for iOS devices */}
         <link rel="apple-touch-icon" href="/projectclay.jpg" sizes="180x180" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-full bg-black text-white`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={true}
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
