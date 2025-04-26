@@ -8,8 +8,8 @@ interface ApiKeySetupHelpProps {
 
 export const ApiKeySetupHelp = ({ error }: ApiKeySetupHelpProps) => {
   return (
-    <div className="max-w-2xl mx-auto my-6 p-6 bg-gray-50 border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700">
-      <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">
+    <div className="max-w-2xl mx-auto my-6 p-6 bg-zinc-50 border border-zinc-200 rounded-lg shadow-sm dark:bg-zinc-800 dark:border-zinc-700">
+      <h2 className="text-2xl font-bold mb-4 text-zinc-800 dark:text-zinc-200">
         API Key Setup Required
       </h2>
       
@@ -33,11 +33,11 @@ export const ApiKeySetupHelp = ({ error }: ApiKeySetupHelpProps) => {
         </div>
       )}
       
-      <p className="mb-4 text-gray-600 dark:text-gray-300">
+      <p className="mb-4 text-zinc-600 dark:text-zinc-300">
         Follow these steps to set up your API key:
       </p>
       
-      <ol className="mb-6 pl-5 list-decimal space-y-3 text-gray-600 dark:text-gray-300">
+      <ol className="mb-6 pl-5 list-decimal space-y-3 text-zinc-600 dark:text-zinc-300">
         <li>
           <span className="font-semibold">Sign up for OpenRouter</span>: 
           Visit <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">openrouter.ai</a> and create an account if you don&apos;t have one.
@@ -48,11 +48,11 @@ export const ApiKeySetupHelp = ({ error }: ApiKeySetupHelpProps) => {
         </li>
         <li>
           <span className="font-semibold">Create a .env.local file</span>: 
-          In the root directory of this project, create a file named <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">.env.local</code>
+          In the root directory of this project, create a file named <code className="bg-zinc-100 dark:bg-zinc-700 px-1 py-0.5 rounded text-sm">.env.local</code>
         </li>
         <li>
           <span className="font-semibold">Add your API key</span>: 
-          In the .env.local file, add this line: <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">OPENROUTER_API_KEY=your_api_key_here</code>
+          In the .env.local file, add this line: <code className="bg-zinc-100 dark:bg-zinc-700 px-1 py-0.5 rounded text-sm">OPENROUTER_API_KEY=your_api_key_here</code>
         </li>
         <li>
           <span className="font-semibold">Restart the development server</span>: 
@@ -60,7 +60,7 @@ export const ApiKeySetupHelp = ({ error }: ApiKeySetupHelpProps) => {
         </li>
       </ol>
       
-      <div className="text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-4">
+      <div className="text-sm text-zinc-500 dark:text-zinc-400 border-t border-zinc-200 dark:border-zinc-700 pt-4">
         <p>
           Note: Never commit your API keys to version control. The .env.local file is automatically ignored by Git.
         </p>

@@ -20,11 +20,11 @@ export const ChatInterface = () => {
   const [apiKeyConfigured, setApiKeyConfigured] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [showThinking, setShowThinking] = useState(false);
-  const [thinkingSteps, setThinkingSteps] = useState<string[] | undefined>(undefined);
-  const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
+  const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
+  const [modelInfo, setModelInfo] = useState<ChatResponse['model'] | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
+  const minimumThinkingTime = 3000; // 3 seconds minimum thinking time
 
   useEffect(() => {
     const checkApiConfig = async () => {
@@ -224,7 +224,7 @@ export const ChatInterface = () => {
         <div ref={messagesEndRef} />
       </div>
       
-      <form onSubmit={handleSubmit} className="border-t dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
+      <form onSubmit={handleSubmit} className="border-t dark:border-zinc-700 p-4 bg-white dark:bg-zinc-800">
         <div className="flex flex-col space-y-3">
           <div className="relative">
             <textarea
@@ -235,7 +235,7 @@ export const ChatInterface = () => {
               placeholder="Type your message..."
               disabled={loading}
               rows={1}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg py-3 px-4 pr-16 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 dark:text-white"
+              className="w-full border border-zinc-300 dark:border-zinc-600 rounded-lg py-3 px-4 pr-16 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-zinc-700 dark:text-white"
             />
             <button
               type="submit"
@@ -243,13 +243,13 @@ export const ChatInterface = () => {
               className="absolute right-2 bottom-2 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Send message"
             >
-
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                 <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
               </svg>
             </button>
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 flex justify-between">
-            <span>Press <kbd className="bg-gray-100 dark:bg-gray-700 px-1 rounded">Ctrl</kbd>+<kbd className="bg-gray-100 dark:bg-gray-700 px-1 rounded">Enter</kbd> to send</span>
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 flex justify-between">
+            <span>Press <kbd className="bg-zinc-100 dark:bg-zinc-700 px-1 rounded">Ctrl</kbd>+<kbd className="bg-zinc-100 dark:bg-zinc-700 px-1 rounded">Enter</kbd> to send</span>
             {loading && (
               <span>
                 {showThinking ? `${modelInfo?.name || 'DeepSeek r1'} is thinking...` : "Loading..."}

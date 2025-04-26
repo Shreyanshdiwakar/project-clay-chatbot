@@ -46,11 +46,11 @@ export const ChatInput = ({ onSendMessage, disabled = false }: ChatInputProps) =
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Ask about extracurricular activities..."
-        className={`w-full p-4 pr-12 bg-white dark:bg-gray-700 border ${
+        className={`w-full p-4 pr-12 bg-white dark:bg-zinc-700 border ${
           disabled
-            ? 'border-gray-200 dark:border-gray-600'
+            ? 'border-zinc-200 dark:border-zinc-600'
             : 'border-blue-300 dark:border-blue-600'
-        } rounded-lg resize-none min-h-[50px] max-h-[150px] text-gray-800 dark:text-gray-100 outline-none transition-colors`}
+        } rounded-lg resize-none min-h-[50px] max-h-[150px] text-zinc-800 dark:text-zinc-100 outline-none transition-colors`}
         disabled={disabled}
         rows={1}
       />
@@ -59,7 +59,7 @@ export const ChatInput = ({ onSendMessage, disabled = false }: ChatInputProps) =
         disabled={!message.trim() || disabled}
         className={`absolute right-3 bottom-3 p-2 rounded-full transition-colors ${
           !message.trim() || disabled
-            ? 'text-gray-400 dark:text-gray-500'
+            ? 'text-zinc-400 dark:text-zinc-500'
             : 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
         }`}
       >

@@ -15,11 +15,11 @@
 
 import { NextResponse } from 'next/server';
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_API_URL: string = 'https://openrouter.ai/api/v1/chat/completions';
 
 // Primary and fallback models
-const PRIMARY_MODEL = 'deepseek/deepseek-chat';
-const FALLBACK_MODEL = 'openai/gpt-3.5-turbo';
+const PRIMARY_MODEL: string = 'deepseek/deepseek-chat';
+const FALLBACK_MODEL: string = 'openai/gpt-3.5-turbo';
 
 // Model info type
 type ModelInfo = {
@@ -29,6 +29,32 @@ type ModelInfo = {
   developer: string;
   parameters: string;
 };
+
+// Request and response types
+interface ChatRequest {
+  message: string;
+  pdfContent?: string | null;
+}
+
+interface ChatResponse {
+  message: string;
+  model: ModelInfo & { id: string };
+  thinking: string[];
+}
+
+interface ModelResponse {
+  success: boolean;
+  content?: string;
+  error?: string;
+}
+
+interface OpenRouterResponse {
+  choices: {
+    message: {
+      content: string;
+    };
+  }[];
+}
 
 // Model information for UI display
 const MODEL_INFO: Record<string, ModelInfo> = {
@@ -48,11 +74,11 @@ const MODEL_INFO: Record<string, ModelInfo> = {
   }
 };
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<NextResponse<ChatResponse | { error: string }>> {
   try {
     console.log('Received chat request');
     
-    const body = await request.json();
+    const body = await request.json() as ChatRequest;
     console.log('Request body:', body);
     
     const { message, pdfContent } = body;
@@ -66,6 +92,8 @@ export async function POST(request: Request) {
     }
 
     // Get API key and validate - with better error handling for Vercel
+    // We check multiple environment variables to ensure the API key is available 
+    // in different environments (local development, production, Vercel)
     const openrouterApiKey = 
       process.env.OPENROUTER_API_KEY || 
       process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || 
@@ -120,7 +148,7 @@ export async function POST(request: Request) {
     
     // Return response with model information and thinking steps
     return NextResponse.json({
-      message: botResponse.content,
+      message: botResponse.content!,
       model: {
         id: modelUsed,
         ...MODEL_INFO[modelUsed]
@@ -172,7 +200,7 @@ function generateThinkingSteps(message: string, pdfContent?: string | null): str
   return steps;
 }
 
-async function tryWithModel(model: string, message: string, apiKey: string, pdfContent?: string | null) {
+async function tryWithModel(model: string, message: string, apiKey: string, pdfContent?: string | null): Promise<ModelResponse> {
   try {
     console.log(`Sending request to OpenRouter API using ${model}...`);
     
@@ -248,69 +276,58 @@ Use the above Common App information to provide personalized advice specifically
     console.log('OpenRouter request body:', JSON.stringify({
       ...requestBody,
       messages: [
-        {
-          role: 'system',
-          content: systemPrompt.substring(0, 100) + '... [truncated for logs]'
-        },
-        requestBody.messages[1]
+        { role: 'system', content: '(system prompt, truncated for logs)' },
+        { role: 'user', content: message.substring(0, 100) + (message.length > 100 ? '...' : '') }
       ]
-    }));
+    }, null, 2));
     
+    // Make the API call to OpenRouter
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers,
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
     });
-
-    const data = await response.json();
     
-    console.log(`${model} API response status:`, response.status);
-    console.log(`${model} API response headers:`, Object.fromEntries(response.headers.entries()));
-    console.log(`${model} API full response:`, JSON.stringify(data));
-    
+    // Process API response
     if (!response.ok) {
-      console.error(`${model} API error:`, JSON.stringify(data));
-      
-      // Special case for authentication errors
-      if (response.status === 401 || (data?.error?.code === 401)) {
-        return { 
-          success: false, 
-          error: 'Authentication failed: Please check that your OpenRouter API key is valid and not expired.' 
-        };
-      }
-      
-      // Handle model not available error
-      if (data?.error?.message?.includes('not available') || 
-          data?.error?.message?.toLowerCase().includes('model')) {
-        return {
-          success: false,
-          error: `Model ${model} is not available: ${data?.error?.message || 'Try using a different model'}`
-        };
-      }
-      
-      return { 
-        success: false, 
-        error: `${model} API error: ${JSON.stringify(data)}` 
+      const errorText = await response.text();
+      console.error(`OpenRouter API error (${response.status}):`, errorText);
+      return {
+        success: false,
+        error: `OpenRouter API returned status ${response.status}: ${errorText.substring(0, 200)}${errorText.length > 200 ? '...' : ''}`
       };
     }
-
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error(`${model} unexpected response format:`, JSON.stringify(data));
-      return { 
-        success: false, 
-        error: `${model} unexpected response format: ${JSON.stringify(data)}` 
-      };
-    }
-
-    const content = data.choices[0].message.content || 'Sorry, I could not generate a response.';
-    console.log(`${model} response:`, content.substring(0, 50) + '...');
     
-    return { success: true, content };
+    const responseData = await response.json() as OpenRouterResponse;
+    console.log('OpenRouter API response:', JSON.stringify(responseData, null, 2));
+    
+    if (!responseData.choices || responseData.choices.length === 0 || !responseData.choices[0].message) {
+      console.error('OpenRouter API returned an invalid response structure:', responseData);
+      return {
+        success: false,
+        error: 'The API response format was invalid or empty.'
+      };
+    }
+    
+    const content = responseData.choices[0].message.content.trim();
+    
+    if (!content) {
+      console.error('OpenRouter API returned an empty message content');
+      return {
+        success: false,
+        error: 'The API returned an empty message.'
+      };
+    }
+    
+    return {
+      success: true,
+      content
+    };
   } catch (error) {
-    console.error(`Error with ${model}:`, error);
-    return { 
-      success: false, 
-      error: `Error with ${model}: ${error instanceof Error ? error.message : String(error)}` 
+    console.error(`Error while using model ${model}:`, error);
+    return {
+      success: false,
+      error: `API call failed: ${error instanceof Error ? error.message : String(error)}`
     };
   }
 } 

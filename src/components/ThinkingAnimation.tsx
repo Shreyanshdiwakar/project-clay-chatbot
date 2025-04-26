@@ -7,7 +7,6 @@ interface ThinkingAnimationProps {
   thinkingSteps?: string[];
 }
 
-
 export const ThinkingAnimation = ({ 
   message = "Deep thinking in progress...",
   thinkingSteps = []
@@ -17,30 +16,24 @@ export const ThinkingAnimation = ({
   const fullTextRef = useRef(message);
   const displayedStepsRef = useRef<Set<string>>(new Set());
 
-
   useEffect(() => {
-
     if (displayedText === fullTextRef.current) return;
     
-
     const timeout = setTimeout(() => {
       setDisplayedText(prev => {
-
         const nextCharIndex = prev.length;
         if (nextCharIndex < fullTextRef.current.length) {
           return fullTextRef.current.slice(0, nextCharIndex + 1);
         }
         return prev;
       });
-
+    }, 50);
     
     return () => clearTimeout(timeout);
   }, [displayedText]);
 
-
   useEffect(() => {
     if (thinkingSteps.length === 0) {
-
       const interval = setInterval(() => {
         if (Math.random() > 0.7 && displayedText.length > 10) {
           const currentLine = `\n> ${getRandomComputationStep()}`;
@@ -50,7 +43,6 @@ export const ThinkingAnimation = ({
       
       return () => clearInterval(interval);
     } else {
-
       const interval = setInterval(() => {
         const unshownSteps = thinkingSteps.filter(step => !displayedStepsRef.current.has(step));
         if (unshownSteps.length > 0) {
@@ -64,23 +56,21 @@ export const ThinkingAnimation = ({
     }
   }, [displayedText, thinkingSteps]);
 
-
   useEffect(() => {
     const interval = setInterval(() => {
       setCursorVisible(prev => !prev);
-
+    }, 500);
     
     return () => clearInterval(interval);
   }, []);
   
   return (
-    <div className="font-mono text-xs md:text-sm bg-gray-800 text-green-400 p-3 rounded-md whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+    <div className="font-mono text-xs md:text-sm bg-zinc-800 text-green-400 p-3 rounded-md whitespace-pre-wrap max-h-[200px] overflow-y-auto">
       {displayedText}
       <span className={`${cursorVisible ? 'opacity-100' : 'opacity-0'} transition-opacity`}>_</span>
     </div>
   );
 };
-
 
 function getRandomComputationStep(): string {
   const steps = [

@@ -92,7 +92,7 @@ export const FileUpload = ({ onFileProcess, onError, isCompact = false }: FileUp
       <button
         onClick={triggerFileUpload}
         disabled={isUploading}
-        className={`flex items-center ${isCompact ? 'space-x-0' : 'space-x-2'} bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg ${isCompact ? 'px-3 py-2' : 'px-4 py-2'} text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors`}
+        className={`flex items-center ${isCompact ? 'space-x-0' : 'space-x-2'} bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded-lg ${isCompact ? 'px-3 py-2' : 'px-4 py-2'} text-sm font-medium text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-600 transition-colors`}
         type="button"
         aria-label="Upload Common App PDF"
         title="Upload Common App PDF"
@@ -112,7 +112,7 @@ export const FileUpload = ({ onFileProcess, onError, isCompact = false }: FileUp
         )}
       </button>
       {fileName && !isUploading && !isCompact && (
-        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400 flex items-center">
+        <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400 flex items-center">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
             fill="none" 

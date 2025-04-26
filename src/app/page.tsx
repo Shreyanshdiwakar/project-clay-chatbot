@@ -120,7 +120,7 @@ export default function Home() {
   };
 
   return (
-    <main className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+    <main className="flex flex-col min-h-screen bg-zinc-50 dark:bg-zinc-900">
       {/* Header - Made sticky */}
       <header className="bg-black text-white py-4 px-6 flex justify-between items-center sticky top-0 z-50 shadow-md">
         <div className="flex items-center">
@@ -175,7 +175,7 @@ export default function Home() {
             href="https://www.projectclay.com/meet-your-mentors#registrationform" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="bg-white text-black px-4 py-1.5 rounded-md text-sm font-medium flex items-center hover:bg-gray-100 transition-colors"
+            className="bg-white text-black px-4 py-1.5 rounded-md text-sm font-medium flex items-center hover:bg-zinc-100 transition-colors"
           >
             Register now
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1">
@@ -189,19 +189,19 @@ export default function Home() {
         {/* Welcome section if no messages */}
         {messages.length === 0 && (
           <div className="text-center my-12 max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-gray-800 dark:text-white">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-zinc-800 dark:text-white">
               Any passion, any college.<br />
               We&apos;re here for you.
             </h1>
-            <p className="text-lg mb-6 text-gray-600 dark:text-gray-300">
+            <p className="text-lg mb-6 text-zinc-600 dark:text-zinc-300">
               Traditional college counselling is out of touch and expensive.<br />
               Learning new skills is hard. We pair you with an elder sibling who will guide you through it.
             </p>
-            <div className="mt-4 text-sm text-center text-gray-500 dark:text-gray-400">
+            <div className="mt-4 text-sm text-center text-zinc-500 dark:text-zinc-400">
               <p className="flex justify-center items-center gap-1">
                 <span className="flex -space-x-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <span key={i} className="inline-block h-6 w-6 rounded-full bg-gray-200 dark:bg-gray-700"></span>
+                    <span key={i} className="inline-block h-6 w-6 rounded-full bg-zinc-200 dark:bg-zinc-700"></span>
                   ))}
                 </span>
                 Trusted by 5000+ students from 30+ countries
@@ -213,7 +213,7 @@ export default function Home() {
         {/* PDF Upload component - only show if no conversation started */}
         {messages.length === 0 && (
           <div className="mt-4 text-center">
-            <p className="text-gray-600 dark:text-gray-300 mb-3">
+            <p className="text-zinc-600 dark:text-zinc-300 mb-3">
               Upload your Common App PDF for personalized guidance (optional)
             </p>
             <div className="flex justify-center">
@@ -241,7 +241,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex flex-col max-w-[85%]">
-                <div className="p-3 rounded-lg card-shadow bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none">
+                <div className="p-3 rounded-lg card-shadow bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-bl-none">
                   <ThinkingIndicator steps={thinkingSteps} />
                 </div>
               </div>
@@ -263,7 +263,7 @@ export default function Home() {
         </div>
         
         {/* Input area - Made sticky */}
-        <div className="sticky bottom-0 left-0 right-0 bg-gray-50 dark:bg-gray-900 pt-4 pb-4 border-t border-gray-200 dark:border-gray-700 shadow-md z-10">
+        <div className="sticky bottom-0 left-0 right-0 bg-zinc-50 dark:bg-zinc-900 pt-4 pb-4 border-t border-zinc-200 dark:border-zinc-700 shadow-md z-10">
           <div className="flex items-start mb-2">
             {/* PDF Upload button during conversation */}
             {messages.length > 0 && !pdfContent && (
@@ -279,7 +279,7 @@ export default function Home() {
               <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
             </div>
           </div>
-          <p className="text-xs text-center mt-2 text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-center mt-2 text-zinc-500 dark:text-zinc-400">
             {pdfContent 
               ? "Ask personalized questions based on your Common App profile" 
               : "Ask me anything about choosing and planning extracurricular activities for college applications"}
