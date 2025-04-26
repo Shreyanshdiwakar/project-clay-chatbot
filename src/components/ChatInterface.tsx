@@ -35,13 +35,12 @@ export const ChatInterface = () => {
           setApiKeyConfigured(data.openrouterApiKey === 'set');
           
           if (data.openrouterApiKey !== 'set') {
-
             setMessages(prev => [
               ...prev,
               {
                 id: 'api-warning',
                 role: 'assistant',
-
+                content: 'The OpenRouter API key is not configured. Please add your API key to the .env.local file and restart the application.'
               }
             ]);
             setAuthError('API key is missing in the .env.local file');

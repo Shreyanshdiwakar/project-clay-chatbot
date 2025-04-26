@@ -19,4 +19,4 @@ export interface Message {
 /**
  * Export relevant types from API
  */
-export type { ChatResponse }; 
+export type { ChatResponse, ModelInfo }; 
