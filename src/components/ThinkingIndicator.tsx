@@ -1,70 +1,63 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ThinkingIndicatorProps {
   steps: string[];
 }
 
-export const ThinkingIndicator = ({ steps }: ThinkingIndicatorProps) => {
-  const [visibleSteps, setVisibleSteps] = useState<number>(0);
-  const [dotCount, setDotCount] = useState<number>(0);
+export function ThinkingIndicator({ steps }: ThinkingIndicatorProps) {
+  const [visibleSteps, setVisibleSteps] = useState<string[]>([]);
   
   useEffect(() => {
-    const animation = setInterval(() => {
-      setDotCount(prev => (prev + 1) % 4);
-    }, 400);
+    if (steps.length === 0) {
+      setVisibleSteps(["Thinking..."]);
+      return;
+    }
     
-    return () => clearInterval(animation);
-  }, []);
-  
-  useEffect(() => {
-    if (steps.length === 0) return;
+    // Show steps one by one with delays
+    const timers: NodeJS.Timeout[] = [];
     
-    const stepsInterval = setInterval(() => {
-      setVisibleSteps(prev => {
-        if (prev < steps.length) {
-          return prev + 1;
-        }
-        return prev;
-      });
-    }, 600);
-    
-    return () => clearInterval(stepsInterval);
-  }, [steps]);
-  
-  const renderDots = () => {
-    return '.'.repeat(dotCount);
-  };
-
-  if (steps.length === 0) {
-    return (
-      <div className="flex items-center">
-        <span className="text-indigo-600 dark:text-indigo-400 font-medium">
-          thinking<span className="inline-block min-w-8">{renderDots()}</span>
-        </span>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center mb-2">
-        <span className="text-indigo-600 dark:text-indigo-400 font-medium">
-          thinking<span className="inline-block min-w-8">{renderDots()}</span>
-        </span>
-      </div>
+    steps.forEach((step, index) => {
+      const timer = setTimeout(() => {
+        setVisibleSteps(prev => [...prev, step]);
+      }, index * 600);
       
-      <ul className="space-y-1 pl-1">
-        {steps.slice(Math.max(0, visibleSteps - 2), visibleSteps).map((step, index) => (
-          <li key={index} className="flex items-start space-x-2 animate-fadeIn opacity-80">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500 dark:text-indigo-400 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            <span className="text-zinc-700 dark:text-zinc-300 text-xs">{step}</span>
-          </li>
+      timers.push(timer);
+    });
+    
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, [steps]);
+
+  return (
+    <Card className="border-0 bg-zinc-800/50 border-zinc-700 shadow-none">
+      <CardContent className="p-4 space-y-4">
+        {visibleSteps.map((step, index) => (
+          <div 
+            key={index}
+            className="flex items-start gap-3 animate-fadeIn"
+            style={{ animationDelay: `${index * 0.2}s` }}
+          >
+            <div className="h-5 w-5 mt-0.5 relative flex items-center justify-center">
+              <div className="absolute inset-0 bg-zinc-500/30 rounded-full animate-ping" />
+              <div className="relative h-3 w-3 bg-zinc-500 rounded-full" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-zinc-300">{step}</p>
+              {index === visibleSteps.length - 1 && (
+                <div className="mt-2 space-y-2">
+                  <Skeleton className="h-3 w-[90%] bg-zinc-700" />
+                  <Skeleton className="h-3 w-[75%] bg-zinc-700" />
+                </div>
+              )}
+            </div>
+          </div>
         ))}
-      </ul>
-    </div>
+      </CardContent>
+    </Card>
   );
-}; 
+} 

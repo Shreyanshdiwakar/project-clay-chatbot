@@ -4,9 +4,11 @@ import { useState, useRef, useEffect } from 'react';
 import { ChatInput } from '@/components/ChatInput';
 import { ChatMessage } from '@/components/ChatMessage';
 import { Message, ModelInfo } from '@/types/chat';
-import Image from 'next/image';
-import { ThinkingIndicator } from '@/components/ThinkingIndicator';
 import { FileUpload } from '@/components/FileUpload';
+import { Header } from '@/components/Header';
+import { ThinkingIndicator } from '@/components/ThinkingIndicator';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -120,172 +122,119 @@ export default function Home() {
   };
 
   return (
-    <main className="flex flex-col min-h-screen bg-zinc-50 dark:bg-zinc-900">
-      {/* Header - Made sticky */}
-      <header className="bg-black text-white py-4 px-6 flex justify-between items-center sticky top-0 z-50 shadow-md">
-        <div className="flex items-center">
-          <a 
-            href="https://www.projectclay.com/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-          >
-            <Image 
-              src="/projectclay.jpg"
-              alt="Project Clay Logo"
-              width={120}
-              height={40}
-              className="mr-2"
-            />
-          </a>
-        </div>
-        <div className="flex items-center space-x-4">
-          <a 
-            href="https://www.projectclay.com/meet-your-mentors" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-sm font-medium hover:text-blue-400 transition-colors"
-          >
-            Browse mentors
-          </a>
-          <a 
-            href="https://docs.google.com/forms/d/e/1FAIpQLSfyQUZWh8VcY1Zx7S8fnS45E_3I77kEGfh30Wc0v5fJzy3REw/viewform" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-sm font-medium hover:text-blue-400 transition-colors"
-          >
-            Ivy 10
-          </a>
-          <a 
-            href="https://calendly.com/dyumnamadan01/intro-meeting?month=2025-04" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-sm font-medium hover:text-blue-400 transition-colors"
-          >
-            Book a Call
-          </a>
-          <a 
-            href="https://chat.whatsapp.com/KfU9XRXYLIJIGkfuJsgZAj" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-sm font-medium hover:text-blue-400 transition-colors"
-          >
-            Join Community
-          </a>
-          <a 
-            href="https://www.projectclay.com/meet-your-mentors#registrationform" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="bg-white text-black px-4 py-1.5 rounded-md text-sm font-medium flex items-center hover:bg-zinc-100 transition-colors"
-          >
-            Register now
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 ml-1">
-              <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
-            </svg>
-          </a>
-        </div>
-      </header>
-
-      <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto p-4 md:p-8">
+    <div className="flex flex-col min-h-screen bg-black">
+      <Header />
+      
+      <main className="flex-1 container mx-auto px-4 py-6 max-w-5xl text-white">
         {/* Welcome section if no messages */}
         {messages.length === 0 && (
-          <div className="text-center my-12 max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6 text-zinc-800 dark:text-white">
-              Any passion, any college.<br />
-              We&apos;re here for you.
-            </h1>
-            <p className="text-lg mb-6 text-zinc-600 dark:text-zinc-300">
-              Traditional college counselling is out of touch and expensive.<br />
-              Learning new skills is hard. We pair you with an elder sibling who will guide you through it.
-            </p>
-            <div className="mt-4 text-sm text-center text-zinc-500 dark:text-zinc-400">
-              <p className="flex justify-center items-center gap-1">
+          <div className="space-y-8 my-12">
+            <div className="text-center space-y-5">
+              <h1 className="text-4xl md:text-5xl font-bold">
+                Any passion, any college.<br />
+                <span className="text-white">We're here for you.</span>
+              </h1>
+              <p className="text-lg text-zinc-400 max-w-3xl mx-auto">
+                Traditional college counselling is out of touch and expensive.
+                Learning new skills is hard. We pair you with an elder sibling who will guide you through it.
+              </p>
+              <div className="flex justify-center items-center gap-1 text-sm text-zinc-500 mt-6">
                 <span className="flex -space-x-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <span key={i} className="inline-block h-6 w-6 rounded-full bg-zinc-200 dark:bg-zinc-700"></span>
+                    <span key={i} className="inline-block h-6 w-6 rounded-full bg-zinc-800"></span>
                   ))}
                 </span>
-                Trusted by 5000+ students from 30+ countries
-              </p>
+                <span>Trusted by 5000+ students from 30+ countries</span>
+              </div>
             </div>
+              
+            <Tabs defaultValue="chat" className="w-full max-w-3xl mx-auto">
+              <TabsList className="grid w-full grid-cols-2 mb-4 bg-zinc-900">
+                <TabsTrigger value="chat" className="text-sm py-2 px-4 data-[state=active]:bg-zinc-800">Chat with AI Counselor</TabsTrigger>
+                <TabsTrigger value="upload" className="text-sm py-2 px-4 data-[state=active]:bg-zinc-800">Upload Common App</TabsTrigger>
+              </TabsList>
+              <TabsContent value="chat" className="mt-2">
+                <Card className="bg-zinc-900 border-zinc-800 shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xl text-white">Start your conversation</CardTitle>
+                    <CardDescription className="text-zinc-400">
+                      Ask any question about college applications, extracurricular activities, or academic planning.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ChatInput onSendMessage={handleSendMessage} isThinking={isThinking} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              <TabsContent value="upload" className="mt-2">
+                <Card className="bg-zinc-900 border-zinc-800 shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xl text-white">Upload your Common App PDF</CardTitle>
+                    <CardDescription className="text-zinc-400">
+                      Get personalized guidance based on your application profile
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex justify-center">
+                    <FileUpload 
+                      onFileProcess={handlePdfProcess}
+                      onError={handlePdfError}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
         )}
 
-        {/* PDF Upload component - only show if no conversation started */}
-        {messages.length === 0 && (
-          <div className="mt-4 text-center">
-            <p className="text-zinc-600 dark:text-zinc-300 mb-3">
-              Upload your Common App PDF for personalized guidance (optional)
-            </p>
-            <div className="flex justify-center">
-              <FileUpload 
-                onFileProcess={handlePdfProcess}
-                onError={handlePdfError}
+        {/* Chat conversation */}
+        {messages.length > 0 && (
+          <div className="space-y-4 pb-20">
+            {/* Display messages */}
+            {messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))}
+            
+            {/* Thinking indicator */}
+            {isThinking && (
+              <div className="flex w-full my-4 justify-start">
+                <div className="flex-shrink-0 mr-4">
+                  <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-pulse">
+                      <path d="M19.7 3.268a2 2 0 0 1 2.146 3.398c-1.73 1.421-5.891 4.382-12.7 4.382-6.587 0-10.666-2.89-12.32-4.316a2 2 0 0 1 2.15-3.396c1.526 1.297 5.01 3.712 10.17 3.712 5.016 0 8.44-2.38 10.55-3.78Z" />
+                      <path d="M19.7 20.732a2 2 0 0 0 2.146-3.398c-1.73-1.421-5.891-4.382-12.7-4.382-6.587 0-10.666 2.89-12.32 4.316a2 2 0 0 0 2.15 3.396c1.526-1.297 5.01-3.712 10.17-3.712 5.016 0 8.44 2.38 10.55 3.78Z" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex flex-col max-w-[80%]">
+                  <ThinkingIndicator steps={thinkingSteps} />
+                </div>
+              </div>
+            )}
+            
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-900/30 text-red-400 p-4 rounded-lg my-4 border border-red-900">
+                <p className="font-medium">Error: {error}</p>
+              </div>
+            )}
+            
+            {/* Invisible div for scrolling */}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+        
+        {/* Input box - fixed at bottom when conversation started */}
+        {messages.length > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800">
+            <div className="container mx-auto max-w-5xl px-4">
+              <ChatInput 
+                onSendMessage={handleSendMessage}
+                isThinking={isThinking}
               />
             </div>
           </div>
         )}
-
-        {/* Chat messages */}
-        <div className="flex-1 overflow-y-auto">
-          {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
-          
-          {isThinking && (
-            <div className="flex w-full my-4 justify-start">
-              <div className="flex-shrink-0 mr-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 animate-pulse">
-                    <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="flex flex-col max-w-[85%]">
-                <div className="p-3 rounded-lg card-shadow bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-bl-none">
-                  <ThinkingIndicator steps={thinkingSteps} />
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {error && (
-            <div className="p-3 my-4 bg-red-50 border border-red-200 rounded-lg text-red-600 dark:bg-red-900/20 dark:border-red-800/30 dark:text-red-400">
-              <p className="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 mr-2">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-                </svg>
-                {error}
-              </p>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
-        
-        {/* Input area - Made sticky */}
-        <div className="sticky bottom-0 left-0 right-0 bg-zinc-50 dark:bg-zinc-900 pt-4 pb-4 border-t border-zinc-200 dark:border-zinc-700 shadow-md z-10">
-          <div className="flex items-start mb-2">
-            {/* PDF Upload button during conversation */}
-            {messages.length > 0 && !pdfContent && (
-              <div className="mr-2">
-                <FileUpload 
-                  onFileProcess={handlePdfProcess}
-                  onError={handlePdfError}
-                  isCompact={true}
-                />
-              </div>
-            )}
-            <div className="flex-1">
-              <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
-            </div>
-          </div>
-          <p className="text-xs text-center mt-2 text-zinc-500 dark:text-zinc-400">
-            {pdfContent 
-              ? "Ask personalized questions based on your Common App profile" 
-              : "Ask me anything about choosing and planning extracurricular activities for college applications"}
-          </p>
-        </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

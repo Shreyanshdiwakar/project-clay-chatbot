@@ -37,8 +37,8 @@ export async function POST(request: Request): Promise<NextResponse<ChatResponse 
       );
     }
 
-    // Check API key configuration
-    if (!isApiKeyConfigured()) {
+    // Check API key configuration - in development mode, we'll continue even without an API key
+    if (!isApiKeyConfigured() && process.env.NODE_ENV !== 'development') {
       console.error('Error: OpenRouter API key is not configured');
       return NextResponse.json(
         { 

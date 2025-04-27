@@ -1,9 +1,3 @@
-/**
- * OpenRouter API Service
- * 
- * Handles communication with the OpenRouter API
- */
-
 import { env } from '@/config/env';
 import { 
   ChatCompletionRequest, 
@@ -12,9 +6,6 @@ import {
   ModelResponse
 } from './types';
 
-/**
- * Creates system prompt for the chat API
- */
 export function createSystemPrompt(pdfContent?: string | null): string {
   let systemPrompt = `You are a friendly academic counselor helping high school students plan extracurricular activities to improve their college applications. Ask follow-up questions if needed.
 
@@ -37,10 +28,8 @@ Example formatting structure:
 2. Second step
 3. Third step`;
 
-  // If PDF content is available, add it to the system prompt
   if (pdfContent) {
-    // Truncate PDF content if it's too long (to fit within token limits)
-    const maxPdfLength = 12000; // Arbitrary limit to avoid token issues
+    const maxPdfLength = 12000;
     const truncatedPdf = pdfContent.length > maxPdfLength
       ? pdfContent.substring(0, maxPdfLength) + "... [PDF content truncated]"
       : pdfContent;
@@ -55,9 +44,28 @@ Use the above Common App information to provide personalized advice specifically
   return systemPrompt;
 }
 
-/**
- * Makes a request to the OpenRouter API
- */
+// Mock response function for development when API key is missing
+function getMockResponse(userMessage: string): ModelResponse {
+  console.log('Using mock response for development');
+  
+  const responses = [
+    "**Excellent Question!**\n\nBased on your interest in college applications, here are some recommended extracurricular activities:\n\n- **Leadership Positions**: Seek roles in student government or club leadership\n- **Community Service**: Volunteer consistently with organizations aligned to your interests\n- **Academic Competitions**: Participate in subject-specific competitions relevant to your intended major\n- **Personal Projects**: Develop independent initiatives that showcase your passions\n\nRemember, colleges value depth over breadth. It's better to be deeply involved in a few activities than superficially involved in many.\n\nWhat specific field or major are you considering?",
+    
+    "**Great to hear from you!**\n\nHere's my advice for planning your extracurricular activities:\n\n**Focus on Quality, Not Quantity**\n- Commit deeply to 2-4 activities that genuinely interest you\n- Seek leadership roles or increasing responsibility over time\n- Maintain consistent involvement throughout high school\n\n**Align Activities with Your Interests**\n- If you love science, join science clubs, competitions, or research opportunities\n- For humanities, consider debate, writing clubs, or community service\n- For arts, develop your portfolio through continuous practice and exhibition\n\nWould you like more specific recommendations based on your particular interests?",
+    
+    "**Thanks for reaching out!**\n\nWhen planning extracurricular activities for college applications, consider these key strategies:\n\n1. **Demonstrate passion** through sustained commitment to activities related to your intended field of study\n2. **Show initiative** by creating new programs or expanding existing ones\n3. **Develop transferable skills** like leadership, teamwork, and problem-solving\n\n**Examples of Strong Activities:**\n- Starting a club related to your interests\n- Conducting an independent research project\n- Creating a community service initiative addressing a local need\n- Participating in selective summer programs in your field\n\nWhat grade are you in currently? This will help me provide more tailored advice."
+  ];
+  
+  // Use the message content to pseudo-randomly select a response
+  const messageHash = userMessage.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const responseIndex = messageHash % responses.length;
+  
+  return {
+    success: true,
+    content: responses[responseIndex]
+  };
+}
+
 export async function callOpenRouterAPI(
   model: string, 
   userMessage: string, 
@@ -67,21 +75,15 @@ export async function callOpenRouterAPI(
     console.log(`Sending request to OpenRouter API using ${model}...`);
     
     const apiKey = env.OPENROUTER_API_KEY;
-    // Safely log info about the API key without exposing it
-    if (apiKey) {
-      console.log(`API key length: ${apiKey.length}, prefix: ${apiKey.substring(0, 3)}, suffix: ${apiKey.substring(apiKey.length - 3)}`);
-    } else {
-      console.log('API key not configured');
-      return {
-        success: false,
-        error: 'OpenRouter API key is not configured'
-      };
+    if (!apiKey || apiKey.length < 10) {
+      console.log('API key not configured - using mock response for development');
+      return getMockResponse(userMessage);
     }
     
-    // Create system prompt
+    console.log(`API key length: ${apiKey.length}, prefix: ${apiKey.substring(0, 3)}, suffix: ${apiKey.substring(apiKey.length - 3)}`);
+    
     const systemPrompt = createSystemPrompt(pdfContent);
 
-    // Create request body
     const requestBody: ChatCompletionRequest = {
       model: model,
       messages: [
@@ -98,7 +100,6 @@ export async function callOpenRouterAPI(
       temperature: 0.7
     };
     
-    // Set up request headers
     const headers = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
@@ -106,10 +107,9 @@ export async function callOpenRouterAPI(
       'OpenRouter-Completions-Version': '2023-12-01'
     };
     
-    // Log the request (with sensitive data redacted)
     console.log('OpenRouter request headers:', JSON.stringify({
       ...headers,
-      'Authorization': 'Bearer ***' // Mask the actual token in logs
+      'Authorization': 'Bearer ***'
     }));
     
     console.log('OpenRouter request body:', JSON.stringify({
@@ -120,14 +120,12 @@ export async function callOpenRouterAPI(
       ]
     }, null, 2));
     
-    // Make the API call
     const response = await fetch(env.OPENROUTER_API_URL, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
     });
     
-    // Handle HTTP errors
     if (!response.ok) {
       let errorText: string;
       try {
@@ -144,11 +142,9 @@ export async function callOpenRouterAPI(
       };
     }
     
-    // Parse successful response
     const responseData = await response.json() as ChatCompletionResponse;
     console.log('OpenRouter API response:', JSON.stringify(responseData, null, 2));
     
-    // Validate response structure
     if (!responseData.choices || responseData.choices.length === 0 || !responseData.choices[0].message) {
       console.error('OpenRouter API returned an invalid response structure:', responseData);
       return {
@@ -157,7 +153,6 @@ export async function callOpenRouterAPI(
       };
     }
     
-    // Extract content
     const content = responseData.choices[0].message.content.trim();
     
     if (!content) {
@@ -181,21 +176,21 @@ export async function callOpenRouterAPI(
   }
 }
 
-/**
- * Try calling the API with a specific model, falling back if needed
- */
 export async function getModelResponse(
   userMessage: string, 
   pdfContent?: string | null
 ): Promise<ModelResponse> {
-  // Try with primary model first
+  // For development without API key, use mock response
+  if (process.env.NODE_ENV === 'development' && (!env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY.length < 10)) {
+    return getMockResponse(userMessage);
+  }
+
   let response = await callOpenRouterAPI(env.PRIMARY_MODEL, userMessage, pdfContent);
   
-  // If primary model fails, try with fallback model
   if (!response.success && response.error) {
     console.log(`Primary model (${env.PRIMARY_MODEL}) failed with error: ${response.error}. Trying fallback model...`);
     response = await callOpenRouterAPI(env.FALLBACK_MODEL, userMessage, pdfContent);
   }
   
   return response;
-} 
+}

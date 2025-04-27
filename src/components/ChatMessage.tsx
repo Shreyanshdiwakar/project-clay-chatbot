@@ -1,110 +1,64 @@
 'use client';
 
-import { Message } from "@/types/chat";
-import { useState } from "react";
+import React from 'react';
+import { format } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Message, ModelInfo } from '@/types/chat';
 import ReactMarkdown from 'react-markdown';
 
 interface ChatMessageProps {
   message: Message;
 }
 
-export const ChatMessage = ({ message }: ChatMessageProps) => {
-  const isUser = message.role === "user";
-  const [showModelInfo, setShowModelInfo] = useState(false);
+export function ChatMessage({ message }: ChatMessageProps) {
+  const isUser = message.role === 'user';
+  const timestamp = message.timestamp 
+    ? format(new Date(message.timestamp), 'HH:mm') 
+    : '';
 
   return (
     <div className={`flex w-full my-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {!isUser && (
-        <div className="flex-shrink-0 mr-2">
-          <div 
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-white cursor-pointer ${
-              message.modelInfo 
-                ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700' 
-                : 'bg-gradient-to-r from-blue-500 to-blue-600'
-            }`}
-            onClick={() => message.modelInfo && setShowModelInfo(!showModelInfo)}
-            title={message.modelInfo ? `Show ${message.modelInfo.name} info` : undefined}
-          >
-            {message.modelInfo ? (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                <path d="M4.5 6.375a4.125 4.125 0 118.25 0 4.125 4.125 0 01-8.25 0zM14.25 8.625a3.375 3.375 0 116.75 0 3.375 3.375 0 01-6.75 0zM1.5 19.125a7.125 7.125 0 0114.25 0v.003l-.001.119a.75.75 0 01-.363.63 13.067 13.067 0 01-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 01-.364-.63l-.001-.122zM17.25 19.128l-.001.144a2.25 2.25 0 01-.233.96 10.088 10.088 0 005.06-1.01.75.75 0 00.42-.643 4.875 4.875 0 00-6.957-4.611 8.586 8.586 0 011.71 5.157v.003z" />
-              </svg>
-            )}
-          </div>
+        <div className="flex-shrink-0 mr-4">
+          <Avatar>
+            <AvatarImage src="/projectclay.jpg" alt="Assistant" />
+            <AvatarFallback className="bg-zinc-700 text-white">PC</AvatarFallback>
+          </Avatar>
         </div>
       )}
       
-      <div className="flex flex-col max-w-[85%]">
-        <div
-          className={`p-4 rounded-lg card-shadow transition-all ${
-            isUser
-              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none'
-              : 'bg-white dark:bg-zinc-700 text-zinc-800 dark:text-zinc-100 rounded-bl-none'
-          }`}
-        >
-          {isUser ? (
-            <div className="whitespace-pre-wrap text-sm md:text-base leading-relaxed">
-              {message.content}
-            </div>
-          ) : (
-            <div className="markdown-content text-sm md:text-base leading-relaxed">
+      <div className={`flex flex-col max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+        <Card className={`border-0 shadow-sm ${isUser ? 'bg-zinc-700 text-white' : 'bg-zinc-800 text-white'}`}>
+          <CardContent className="p-4 pt-4">
+            <div className="markdown-content text-white">
               <ReactMarkdown>
                 {message.content}
               </ReactMarkdown>
             </div>
+          </CardContent>
+          {(timestamp || message.modelInfo) && (
+            <CardFooter className={`px-4 py-2 text-xs ${isUser ? 'text-zinc-300' : 'text-zinc-400'} flex justify-between`}>
+              {timestamp && <div>{timestamp}</div>}
+              {message.modelInfo && (
+                <div className="ml-auto">
+                  {message.modelInfo.name || 'AI Assistant'}
+                </div>
+              )}
+            </CardFooter>
           )}
-        </div>
-        
-        {/* Model information panel */}
-        {!isUser && message.modelInfo && showModelInfo && (
-          <div className="mt-2 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 rounded-lg p-3 text-xs">
-            <div className="flex justify-between items-center mb-2">
-              <h4 className="font-semibold text-indigo-800 dark:text-indigo-300">
-                {message.modelInfo.name} by {message.modelInfo.developer}
-              </h4>
-              <button 
-                onClick={() => setShowModelInfo(false)}
-                className="text-indigo-500 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-100"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <p className="text-indigo-700 dark:text-indigo-300 mb-2">{message.modelInfo.description}</p>
-            
-            <div className="flex flex-wrap gap-1 mb-2">
-              {message.modelInfo.features.map((feature, index) => (
-                <span 
-                  key={index} 
-                  className="bg-indigo-100 dark:bg-indigo-800/40 text-indigo-800 dark:text-indigo-200 rounded-full px-2 py-0.5 text-xs"
-                >
-                  {feature}
-                </span>
-              ))}
-            </div>
-            
-            <div className="text-indigo-600 dark:text-indigo-300">
-              {message.modelInfo.parameters} parameters
-            </div>
-          </div>
-        )}
+        </Card>
       </div>
       
       {isUser && (
-        <div className="flex-shrink-0 ml-2">
-          <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-600 flex items-center justify-center text-zinc-600 dark:text-zinc-200">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-              <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
-            </svg>
-          </div>
+        <div className="flex-shrink-0 ml-4">
+          <Avatar>
+            <AvatarFallback className="bg-zinc-600 text-white">
+              {isUser ? 'U' : 'PC'}
+            </AvatarFallback>
+          </Avatar>
         </div>
       )}
     </div>
   );
-}; 
+} 
