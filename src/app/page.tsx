@@ -15,7 +15,9 @@ export default function Home() {
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [profileContext, setProfileContext] = useState<string | null>(null);
   const [pdfContent, setPdfContent] = useState<string | null>(null);
+  const [pdfUploaded, setPdfUploaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
@@ -23,47 +25,79 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async (content: string) => {
-    if (!content.trim()) return;
-    
+  const handleSendMessage = async (content: string, files?: File[]) => {
+    // If no message but files are present, use a default message
+    const messageToSend = content.trim() || (files && files.length > 0 ? 'See attached files.' : '');
+    if (!messageToSend) return;
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
-      content,
+      content: messageToSend,
       role: 'user',
       timestamp: new Date()
     };
-    
     setMessages(prev => [...prev, userMessage]);
     setIsThinking(true);
     setThinkingSteps([]);
     setError(null);
-    
+
+    let extractedText = '';
+    let fileConfirmationMsg = '';
+    if (files && files.length > 0) {
+      // Prepare FormData for file upload
+      const formData = new FormData();
+      files.forEach((file) => formData.append('files', file));
+      try {
+        const response = await fetch('/api/process-files', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to process files');
+        extractedText = data.text || '';
+        setProfileContext(extractedText);
+        // Confirmation message
+        const typeCounts: Record<string, number> = {};
+        files.forEach(f => {
+          const ext = f.type.includes('pdf') ? 'PDF' : f.type.includes('jpeg') ? 'JPG' : f.type.includes('png') ? 'PNG' : 'File';
+          typeCounts[ext] = (typeCounts[ext] || 0) + 1;
+        });
+        const typeSummary = Object.entries(typeCounts).map(([type, count]) => `${count} ${type}${count > 1 ? 's' : ''}`).join(', ');
+        fileConfirmationMsg = `✅ Uploaded: ${typeSummary}. These will be used for your next message.`;
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          content: fileConfirmationMsg,
+          role: 'assistant',
+          timestamp: new Date()
+        }]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred processing files');
+        setIsThinking(false);
+        return;
+      }
+    }
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          message: content,
-          pdfContent: pdfContent // Pass the PDF content if available
+          message: messageToSend,
+          pdfContent: extractedText || profileContext || ''
         })
       });
-      
       if (!response.ok) {
         let errorMessage = 'Failed to get response';
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } catch (jsonError) {
-          // If JSON parsing fails, use response status text or default error message
           errorMessage = response.statusText || errorMessage;
         }
         throw new Error(errorMessage);
       }
-      
       const data = await response.json();
-      
-      // Create model info if available
       let modelInfo: ModelInfo | undefined = undefined;
       if (data.model) {
         modelInfo = {
@@ -75,8 +109,6 @@ export default function Home() {
           parameters: data.model.parameters
         };
       }
-      
-      // Add bot message
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: data.message,
@@ -84,18 +116,13 @@ export default function Home() {
         timestamp: new Date(),
         modelInfo
       };
-      
-      // If thinking steps are available, show them
       if (data.thinking && Array.isArray(data.thinking)) {
         setThinkingSteps(data.thinking);
       }
-      
-      // Short delay to show thinking steps
       setTimeout(() => {
         setMessages(prev => [...prev, botMessage]);
         setIsThinking(false);
       }, data.thinking && data.thinking.length > 0 ? 800 : 0);
-      
     } catch (err) {
       setIsThinking(false);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -105,7 +132,7 @@ export default function Home() {
 
   const handlePdfProcess = (pdfText: string) => {
     setPdfContent(pdfText);
-    
+    setPdfUploaded(true);
     // Add a system message to inform the user
     const systemMessage: Message = {
       id: Date.now().toString(),
@@ -113,12 +140,22 @@ export default function Home() {
       role: 'assistant',
       timestamp: new Date()
     };
-    
     setMessages(prev => [...prev, systemMessage]);
   };
 
   const handlePdfError = (errorMsg: string) => {
     setError(errorMsg);
+  };
+
+  const handleReplacePdf = () => {
+    setPdfContent(null);
+    setPdfUploaded(false);
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      content: '🔄 **You can now upload a new Common App PDF.**',
+      role: 'assistant',
+      timestamp: new Date()
+    }]);
   };
 
   return (
@@ -174,11 +211,21 @@ export default function Home() {
                       Get personalized guidance based on your application profile
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex justify-center">
+                  <CardContent className="flex flex-col items-center">
                     <FileUpload 
                       onFileProcess={handlePdfProcess}
                       onError={handlePdfError}
+                      isCompact={false}
+                      disabled={pdfUploaded}
                     />
+                    {pdfUploaded && (
+                      <button
+                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                        onClick={handleReplacePdf}
+                      >
+                        Replace PDF
+                      </button>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

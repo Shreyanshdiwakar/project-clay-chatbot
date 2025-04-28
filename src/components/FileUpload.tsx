@@ -7,9 +7,10 @@ interface FileUploadProps {
   onFileProcess: (pdfText: string) => void;
   onError: (error: string) => void;
   isCompact?: boolean;
+  disabled?: boolean;
 }
 
-export const FileUpload = ({ onFileProcess, onError, isCompact = false }: FileUploadProps) => {
+export const FileUpload = ({ onFileProcess, onError, isCompact = false, disabled = false }: FileUploadProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,7 +93,7 @@ export const FileUpload = ({ onFileProcess, onError, isCompact = false }: FileUp
       />
       <Button
         onClick={triggerFileUpload}
-        disabled={isUploading}
+        disabled={isUploading || disabled}
         variant="outline"
         className={`${isCompact ? 'p-2' : ''} border-zinc-700 text-white hover:bg-zinc-700 hover:text-white`}
         type="button"
