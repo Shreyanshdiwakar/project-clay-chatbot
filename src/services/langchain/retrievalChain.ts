@@ -17,7 +17,7 @@ import { ApiKeys } from "./types";
 export async function createRetrievalChain(
   collectionName = "default",
   apiKeys?: ApiKeys,
-  modelName = "deepseek-ai/deepseek-llm-v3-32k"
+  modelName = "openai/gpt-3.5-turbo"
 ) {
   // Get the vector store for the collection
   const vectorStore = await createVectorStore({

@@ -82,7 +82,7 @@ export const env: EnvConfig = {
   OPENROUTER_API_URL: getEnvVar('OPENROUTER_API_URL', 'https://openrouter.ai/api/v1/chat/completions'),
   
   // Model configuration
-  PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'deepseek-ai/deepseek-llm-v3-32k'),
+  PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'openai/gpt-3.5-turbo'),
   FALLBACK_MODEL: getEnvVar('FALLBACK_MODEL', 'openai/gpt-3.5-turbo'),
   
   // Node environment

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const { 
       question, 
       collection = 'default', 
-      modelName = env.PRIMARY_MODEL || 'deepseek-ai/deepseek-llm-v3-32k',
+      modelName = env.PRIMARY_MODEL || 'openai/gpt-3.5-turbo',
       tavily_api_key
     } = body;
     
