@@ -16,6 +16,14 @@ import { ModelInfo } from './types';
 
 // Standard model information used for UI display
 export const MODEL_INFO: Record<string, ModelInfo> = {
+  'tng/deepseek-r1t-chimera': {
+    id: 'tng/deepseek-r1t-chimera',
+    name: 'DeepSeek R1T Chimera',
+    description: 'A powerful large language model with excellent reasoning and creative capabilities',
+    features: ['Reasoning', 'Planning', 'Advising', 'Problem-solving', 'Creativity'],
+    developer: 'TNG',
+    parameters: '7 billion'
+  },
   'deepseek/deepseek-chat': {
     id: 'deepseek/deepseek-chat',
     name: 'DeepSeek Chat',
