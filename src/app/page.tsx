@@ -9,6 +9,8 @@ import { Header } from '@/components/Header';
 import { ThinkingIndicator } from '@/components/ThinkingIndicator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LangChainFileUpload } from '@/components/LangChainFileUpload';
+import { LangChainQuery } from '@/components/LangChainQuery';
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -18,6 +20,7 @@ export default function Home() {
   const [profileContext, setProfileContext] = useState<string | null>(null);
   const [pdfContent, setPdfContent] = useState<string | null>(null);
   const [pdfUploaded, setPdfUploaded] = useState(false);
+  const [knowledgeBaseDocuments, setKnowledgeBaseDocuments] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when messages change
@@ -157,6 +160,29 @@ export default function Home() {
       timestamp: new Date()
     }]);
   };
+  
+  const handleDocumentProcess = (result: any) => {
+    setKnowledgeBaseDocuments(prev => [...prev, result]);
+    setError(null);
+    // Add a system message to inform the user
+    const systemMessage: Message = {
+      id: Date.now().toString(),
+      content: `✅ **Document added to knowledge base successfully!**\n\nFile: ${result.metadata?.filename}\nChunks: ${result.chunks}\n\nYou can now ask questions about this document using the search below or in regular chat.`,
+      role: 'assistant',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, systemMessage]);
+  };
+  
+  const handleDocumentError = (errorMsg: string) => {
+    setError(errorMsg);
+  };
+  
+  const handleKnowledgeBaseQuery = (error: string) => {
+    if (error) {
+      setError(error);
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-black">
@@ -186,9 +212,10 @@ export default function Home() {
             </div>
               
             <Tabs defaultValue="chat" className="w-full max-w-3xl mx-auto">
-              <TabsList className="grid w-full grid-cols-2 mb-4 bg-zinc-900">
+              <TabsList className="grid w-full grid-cols-3 mb-4 bg-zinc-900">
                 <TabsTrigger value="chat" className="text-sm py-2 px-4 data-[state=active]:bg-zinc-800">Chat with AI Counselor</TabsTrigger>
                 <TabsTrigger value="upload" className="text-sm py-2 px-4 data-[state=active]:bg-zinc-800">Upload Common App</TabsTrigger>
+                <TabsTrigger value="knowledge" className="text-sm py-2 px-4 data-[state=active]:bg-zinc-800">Knowledge Base</TabsTrigger>
               </TabsList>
               <TabsContent value="chat" className="mt-2">
                 <Card className="bg-zinc-900 border-zinc-800 shadow-none">
@@ -198,8 +225,34 @@ export default function Home() {
                       Ask any question about college applications, extracurricular activities, or academic planning.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <ChatInput onSendMessage={handleSendMessage} isThinking={isThinking} />
+                  <CardContent className="pt-0">
+                    <p className="text-zinc-400 mb-4">Need help getting started? Try these sample questions:</p>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => handleSendMessage("I'm a junior interested in Computer Science and Robotics. What extracurricular activities would strengthen my application to MIT?")}
+                        className="bg-zinc-800 hover:bg-zinc-700 p-3 rounded text-sm text-left transition"
+                      >
+                        I'm a junior interested in Computer Science and Robotics. What extracurricular activities would strengthen my application to MIT?
+                      </button>
+                      <button 
+                        onClick={() => handleSendMessage("How important are summer activities for college applications, and what options should I consider?")}
+                        className="bg-zinc-800 hover:bg-zinc-700 p-3 rounded text-sm text-left transition"
+                      >
+                        How important are summer activities for college applications, and what options should I consider?
+                      </button>
+                      <button 
+                        onClick={() => handleSendMessage("What's a good timeline for SAT/ACT prep, AP courses, and college applications during high school?")}
+                        className="bg-zinc-800 hover:bg-zinc-700 p-3 rounded text-sm text-left transition"
+                      >
+                        What's a good timeline for SAT/ACT prep, AP courses, and college applications during high school?
+                      </button>
+                      <button 
+                        onClick={() => handleSendMessage("I'm interested in both Biology and Engineering. How can I explore both fields before deciding on a major?")}
+                        className="bg-zinc-800 hover:bg-zinc-700 p-3 rounded text-sm text-left transition"
+                      >
+                        I'm interested in both Biology and Engineering. How can I explore both fields before deciding on a major?
+                      </button>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -229,56 +282,86 @@ export default function Home() {
                   </CardContent>
                 </Card>
               </TabsContent>
+              <TabsContent value="knowledge" className="mt-2">
+                <Card className="bg-zinc-900 border-zinc-800 shadow-none">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xl text-white">Knowledge Base</CardTitle>
+                    <CardDescription className="text-zinc-400">
+                      Upload documents to create a searchable knowledge base for your counseling session
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-medium mb-2">Upload Documents</h3>
+                        <p className="text-zinc-400 text-sm mb-4">
+                          Add PDFs, CSVs, or DOCXs containing college requirements, ECS lists, or reference materials
+                        </p>
+                        <LangChainFileUpload 
+                          onFileProcess={handleDocumentProcess}
+                          onError={handleDocumentError}
+                          collection="college-data"
+                          acceptedFileTypes=".pdf,.csv,.docx,.txt"
+                        />
+                      </div>
+                      
+                      <div className="border-t border-zinc-800 pt-6">
+                        <h3 className="text-lg font-medium mb-2">Search Knowledge Base</h3>
+                        <p className="text-zinc-400 text-sm mb-4">
+                          Search your uploaded documents to find specific information
+                        </p>
+                        <LangChainQuery 
+                          collection="college-data"
+                          onError={handleKnowledgeBaseQuery}
+                        />
+                      </div>
+                      
+                      {knowledgeBaseDocuments.length > 0 && (
+                        <div className="border-t border-zinc-800 pt-6">
+                          <h3 className="text-lg font-medium mb-2">Uploaded Documents</h3>
+                          <div className="grid gap-2">
+                            {knowledgeBaseDocuments.map((doc, index) => (
+                              <div key={index} className="bg-zinc-800 p-3 rounded text-sm">
+                                <div className="flex justify-between">
+                                  <span className="font-medium">{doc.metadata?.filename}</span>
+                                  <span className="text-zinc-400">{doc.chunks} chunks</span>
+                                </div>
+                                <div className="text-xs text-zinc-400 mt-1">
+                                  ID: {doc.documentId?.substring(0, 8)}...
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
           </div>
         )}
 
         {/* Chat conversation */}
         {messages.length > 0 && (
-          <div className="space-y-4 pb-20">
-            {/* Display messages */}
-            {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))}
-            
-            {/* Thinking indicator */}
-            {isThinking && (
-              <div className="flex w-full my-4 justify-start">
-                <div className="flex-shrink-0 mr-4">
-                  <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-pulse">
-                      <path d="M19.7 3.268a2 2 0 0 1 2.146 3.398c-1.73 1.421-5.891 4.382-12.7 4.382-6.587 0-10.666-2.89-12.32-4.316a2 2 0 0 1 2.15-3.396c1.526 1.297 5.01 3.712 10.17 3.712 5.016 0 8.44-2.38 10.55-3.78Z" />
-                      <path d="M19.7 20.732a2 2 0 0 0 2.146-3.398c-1.73-1.421-5.891-4.382-12.7-4.382-6.587 0-10.666 2.89-12.32 4.316a2 2 0 0 0 2.15 3.396c1.526-1.297 5.01-3.712 10.17-3.712 5.016 0 8.44 2.38 10.55 3.78Z" />
-                    </svg>
-                  </div>
+          <div className="flex flex-col h-full">
+            <div className="flex-grow overflow-auto mb-4 space-y-4">
+              {messages.map((message) => (
+                <ChatMessage key={message.id} message={message} />
+              ))}
+              {isThinking && (
+                <ThinkingIndicator steps={thinkingSteps} />
+              )}
+              {error && (
+                <div className="p-4 rounded bg-red-900 text-white mb-4">
+                  <div className="font-bold">Error</div>
+                  <div>{error}</div>
                 </div>
-                <div className="flex flex-col max-w-[80%]">
-                  <ThinkingIndicator steps={thinkingSteps} />
-                </div>
-              </div>
-            )}
-            
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-900/30 text-red-400 p-4 rounded-lg my-4 border border-red-900">
-                <p className="font-medium">Error: {error}</p>
-              </div>
-            )}
-            
-            {/* Invisible div for scrolling */}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-        
-        {/* Input box - fixed at bottom when conversation started */}
-        {messages.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800">
-            <div className="container mx-auto max-w-5xl px-4">
-              <ChatInput 
-                onSendMessage={handleSendMessage}
-                isThinking={isThinking}
-              />
+              )}
+              <div ref={messagesEndRef} />
             </div>
+            
+            <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
           </div>
         )}
       </main>

@@ -10,6 +10,7 @@
 interface EnvConfig {
   // API Keys
   OPENROUTER_API_KEY: string;
+  TAVILY_API_KEY: string;
   
   // API URLs
   OPENROUTER_API_URL: string;
@@ -62,6 +63,20 @@ export const env: EnvConfig = {
     
     return key;
   },
+
+  get TAVILY_API_KEY(): string {
+    const key = 
+      getEnvVar('TAVILY_API_KEY') || 
+      getEnvVar('NEXT_PUBLIC_TAVILY_API_KEY') ||
+      getEnvVar('VERCEL_TAVILY_API_KEY') ||
+      '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'; // Default value from the user input
+    
+    if (key && key === 'your_tavily_api_key_here') {
+      console.error('Warning: TAVILY_API_KEY appears to be a placeholder');
+    }
+    
+    return key;
+  },
   
   // API URLs
   OPENROUTER_API_URL: getEnvVar('OPENROUTER_API_URL', 'https://openrouter.ai/api/v1/chat/completions'),
@@ -94,5 +109,6 @@ export function getEnvDiagnostics(): Record<string, string | boolean> {
     environment: env.NODE_ENV,
     isVercel: env.IS_VERCEL,
     vercelEnv: env.VERCEL_ENV || 'not set',
+    tavilyApiKeyConfigured: Boolean(env.TAVILY_API_KEY) ? 'yes' : 'no',
   };
 } 

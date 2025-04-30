@@ -7,10 +7,10 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: File[]) => void;
-  isThinking?: boolean;
+  disabled?: boolean;
 }
 
-export function ChatInput({ onSendMessage, isThinking = false }: ChatInputProps) {
+export function ChatInput({ onSendMessage, disabled = false }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -25,7 +25,7 @@ export function ChatInput({ onSendMessage, isThinking = false }: ChatInputProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!message.trim() && files.length === 0) || isThinking) return;
+    if ((!message.trim() && files.length === 0) || disabled) return;
     onSendMessage(message, files.length > 0 ? files : undefined);
     setMessage('');
     setFiles([]);
@@ -66,7 +66,7 @@ export function ChatInput({ onSendMessage, isThinking = false }: ChatInputProps)
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type your message..."
-              disabled={isThinking}
+              disabled={disabled}
               className="resize-none min-h-24 pr-24 bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-400 focus-visible:ring-zinc-700"
               rows={1}
             />
@@ -79,7 +79,7 @@ export function ChatInput({ onSendMessage, isThinking = false }: ChatInputProps)
                 className="hidden"
                 id="chat-file-upload"
                 onChange={handleFileChange}
-                disabled={isThinking}
+                disabled={disabled}
               />
               <label htmlFor="chat-file-upload">
                 <Button
@@ -87,7 +87,7 @@ export function ChatInput({ onSendMessage, isThinking = false }: ChatInputProps)
                   size="icon"
                   variant="outline"
                   className="border-zinc-700 text-white hover:bg-zinc-700 hover:text-white"
-                  disabled={isThinking}
+                  disabled={disabled}
                   asChild
                 >
                   <span>
@@ -101,7 +101,7 @@ export function ChatInput({ onSendMessage, isThinking = false }: ChatInputProps)
               <Button
                 type="submit"
                 size="icon"
-                disabled={isThinking || (!message.trim() && files.length === 0)}
+                disabled={disabled || (!message.trim() && files.length === 0)}
                 className="bg-zinc-700 hover:bg-zinc-600"
               >
                 <svg
@@ -132,7 +132,7 @@ export function ChatInput({ onSendMessage, isThinking = false }: ChatInputProps)
         </CardContent>
         <CardFooter className="px-4 py-2 text-xs text-zinc-400 flex justify-between">
           <div>Press Enter to send, Shift+Enter for new line</div>
-          {isThinking && <div>Assistant is thinking...</div>}
+          {disabled && <div>Assistant is thinking...</div>}
         </CardFooter>
       </form>
     </Card>
