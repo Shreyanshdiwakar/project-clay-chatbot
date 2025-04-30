@@ -5,12 +5,13 @@
  */
 
 import { Chroma } from "@langchain/community/vectorstores/chroma";
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { VectorStoreConfig, RetrievalResult, QueryResult } from "./types";
 import { getEmbeddings } from "./embeddings";
 import path from "path";
 
 // Cache vector stores by collection name to prevent duplicate instances
-const vectorStoreCache = new Map<string, Chroma>();
+const vectorStoreCache = new Map<string, Chroma | MemoryVectorStore>();
 
 /**
  * Create or get a vector store for a specific collection
@@ -19,7 +20,7 @@ export async function createVectorStore({
   collectionName,
   persistDirectory,
   embeddingModelName
-}: VectorStoreConfig): Promise<Chroma> {
+}: VectorStoreConfig): Promise<Chroma | MemoryVectorStore> {
   // Check if we have this store cached
   const cacheKey = `${collectionName}:${persistDirectory}`;
   if (vectorStoreCache.has(cacheKey)) {
@@ -28,33 +29,54 @@ export async function createVectorStore({
   
   // Get embeddings
   const embeddings = getEmbeddings(embeddingModelName);
+
+  // In production environments, we'll use MemoryVectorStore to avoid issues with Chroma
+  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+    try {
+      console.log('Using MemoryVectorStore for production environment');
+      const vectorStore = new MemoryVectorStore(embeddings);
+      vectorStoreCache.set(cacheKey, vectorStore);
+      return vectorStore;
+    } catch (error) {
+      console.error(`Error creating MemoryVectorStore: ${error}`);
+      throw error;
+    }
+  }
   
-  // Create new Chroma client with persistence
+  // In development, use Chroma with persistence
   try {
-    const vectorStore = await Chroma.fromExistingCollection(
-      embeddings,
-      { collectionName }
-    );
-    
-    console.log(`Connected to existing Chroma collection: ${collectionName}`);
-    vectorStoreCache.set(cacheKey, vectorStore);
-    return vectorStore;
-  } catch (error) {
-    console.log(`Creating new Chroma collection: ${collectionName}`);
-    
-    // Create a new collection if one doesn't exist
-    const vectorStore = await Chroma.fromDocuments(
-      [], // Start with empty documents
-      embeddings,
-      {
-        collectionName,
-        url: process.env.CHROMA_URL || undefined,
-        collectionMetadata: {
-          "hnsw:space": "cosine"
+    // Create new Chroma client with persistence
+    try {
+      const vectorStore = await Chroma.fromExistingCollection(
+        embeddings,
+        { collectionName }
+      );
+      
+      console.log(`Connected to existing Chroma collection: ${collectionName}`);
+      vectorStoreCache.set(cacheKey, vectorStore);
+      return vectorStore;
+    } catch (error) {
+      console.log(`Creating new Chroma collection: ${collectionName}`);
+      
+      // Create a new collection if one doesn't exist
+      const vectorStore = await Chroma.fromDocuments(
+        [], // Start with empty documents
+        embeddings,
+        {
+          collectionName,
+          url: process.env.CHROMA_URL || undefined,
+          collectionMetadata: {
+            "hnsw:space": "cosine"
+          }
         }
-      }
-    );
-    
+      );
+      
+      vectorStoreCache.set(cacheKey, vectorStore);
+      return vectorStore;
+    }
+  } catch (error) {
+    console.error(`Error with Chroma, falling back to MemoryVectorStore: ${error}`);
+    const vectorStore = new MemoryVectorStore(embeddings);
     vectorStoreCache.set(cacheKey, vectorStore);
     return vectorStore;
   }

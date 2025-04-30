@@ -33,6 +33,22 @@ const nextConfig = {
       },
     ],
   },
+
+  // Custom webpack configuration to handle external URLs
+  webpack: (config, { isServer }) => {
+    // Configure webpack to handle https URLs
+    config.resolve.fallback = { 
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+    };
+
+    // Ignore chromadb-default-embed
+    config.externals = [...(config.externals || []), 'chromadb-default-embed'];
+
+    return config;
+  },
 };
 
 export default nextConfig; 
