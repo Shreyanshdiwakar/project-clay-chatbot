@@ -96,7 +96,7 @@ export async function callOpenRouterAPI(
           content: userMessage
         }
       ],
-      max_tokens: 1000,
+      max_tokens: env.MAX_TOKENS,
       temperature: 0.7
     };
     
@@ -131,6 +131,16 @@ export async function callOpenRouterAPI(
       try {
         const errorJson = await response.json() as ApiErrorResponse;
         errorText = errorJson.error?.message || `Error ${response.status}: ${response.statusText}`;
+        
+        // Handle token limit errors specifically
+        if (errorText.includes('requires more credits') || 
+            errorText.includes('fewer max_tokens') || 
+            response.status === 402) {
+          return {
+            success: false,
+            error: `Token limit exceeded. Please reduce MAX_TOKENS setting (currently ${env.MAX_TOKENS}): ${errorText}`
+          };
+        }
       } catch {
         errorText = await response.text();
       }

@@ -25,6 +25,9 @@ interface EnvConfig {
   // Deployment info
   IS_VERCEL: boolean;
   VERCEL_ENV?: string;
+  
+  // API request configuration
+  MAX_TOKENS: number;
 }
 
 /**
@@ -82,8 +85,11 @@ export const env: EnvConfig = {
   OPENROUTER_API_URL: getEnvVar('OPENROUTER_API_URL', 'https://openrouter.ai/api/v1/chat/completions'),
   
   // Model configuration
-  PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'tng/deepseek-r1t-chimera'),
+  PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'deepseek/deepseek-chat'),
   FALLBACK_MODEL: getEnvVar('FALLBACK_MODEL', 'openai/gpt-3.5-turbo'),
+  
+  // API request configuration
+  MAX_TOKENS: parseInt(getEnvVar('MAX_TOKENS', '800'), 10),
   
   // Node environment
   NODE_ENV: (getEnvVar('NODE_ENV', 'development') as EnvConfig['NODE_ENV']),
