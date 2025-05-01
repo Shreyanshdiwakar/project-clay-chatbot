@@ -44,9 +44,6 @@ const nextConfig = {
       tls: false,
     };
 
-    // Ignore chromadb-default-embed
-    config.externals = [...(config.externals || []), 'chromadb-default-embed'];
-
     return config;
   },
 };
