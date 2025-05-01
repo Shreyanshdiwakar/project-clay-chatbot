@@ -1,95 +1,95 @@
 /**
- * LangChain Retrieval Chain
+ * Simple Retrieval Service
  * 
- * This module provides a retrieval-based QA chain that combines
- * document retrieval with LLM-based question answering.
+ * This module provides a basic question answering system that uses
+ * the vector store to find relevant documents and then uses the API
+ * to generate an answer.
  */
 
-import { OpenAI } from "@langchain/openai";
-import { RetrievalQAChain, loadQAStuffChain } from "langchain/chains";
 import { env } from "@/config/env";
-import { createVectorStore } from "./vectorStore";
+import { queryVectorStore } from "./vectorStore";
 import { ApiKeys } from "./types";
 
 /**
- * Create a QA chain that uses OpenRouter API models
- */
-export async function createRetrievalChain(
-  collectionName = "default",
-  apiKeys?: ApiKeys,
-  modelName = "tng/deepseek-r1t-chimera"
-) {
-  // Get the vector store for the collection
-  const vectorStore = await createVectorStore({
-    collectionName,
-    persistDirectory: process.cwd() + "/data/vectorstore",
-  });
-  
-  // Create the retriever
-  const retriever = vectorStore.asRetriever({
-    k: 5, // Number of documents to retrieve
-    searchType: "similarity",
-  });
-  
-  // Set API key preference (passed in apiKeys object > env var)
-  const openRouterApiKey = 
-    apiKeys?.openrouterApiKey || 
-    env.OPENROUTER_API_KEY;
-  
-  if (!openRouterApiKey) {
-    throw new Error("OpenRouter API key is required for the retrieval chain");
-  }
-  
-  // Create an OpenAI LLM instance pointed at OpenRouter
-  const llm = new OpenAI({
-    modelName,
-    temperature: 0.2,
-    openAIApiKey: openRouterApiKey,
-    configuration: {
-      baseURL: "https://openrouter.ai/api/v1",
-      defaultHeaders: {
-        "HTTP-Referer": "https://openrouter.ai/", 
-        "X-Title": "Project Clay Chatbot"
-      }
-    }
-  });
-  
-  // Create a QA chain with the retriever
-  const chain = RetrievalQAChain.fromLLM(
-    llm,
-    retriever,
-    {
-      returnSourceDocuments: true,
-      verbose: process.env.NODE_ENV === "development",
-    }
-  );
-  
-  return chain;
-}
-
-/**
- * Ask a question using the retrieval chain
+ * Ask a question using direct API call to generate an answer
  */
 export async function askQuestion(
   question: string,
   collectionName = "default", 
   apiKeys?: ApiKeys,
-  modelName?: string
+  modelName = "openai/gpt-3.5-turbo"
 ) {
   try {
-    // Create the chain
-    const chain = await createRetrievalChain(collectionName, apiKeys, modelName);
+    // Set API key preference (passed in apiKeys object > env var)
+    const openRouterApiKey = 
+      apiKeys?.openrouterApiKey || 
+      env.OPENROUTER_API_KEY;
     
-    // Run the chain
-    const response = await chain.call({
-      query: question,
+    if (!openRouterApiKey) {
+      throw new Error("OpenRouter API key is required for question answering");
+    }
+    
+    // First, retrieve relevant documents from the vector store
+    const retrievalResult = await queryVectorStore(question, collectionName);
+    
+    if (!retrievalResult.success || !retrievalResult.results || retrievalResult.results.length === 0) {
+      return {
+        success: false,
+        error: retrievalResult.error || "No relevant documents found",
+      };
+    }
+    
+    // Format the retrieved documents for the prompt
+    const documentContext = retrievalResult.results
+      .map((result, index) => `Document ${index + 1}:\n${result.text}`)
+      .join('\n\n');
+    
+    // Create a prompt with the retrieved documents and the question
+    const prompt = `
+Answer the following question based on the provided documents. If the documents don't contain enough information to answer the question, say so.
+
+DOCUMENTS:
+${documentContext}
+
+QUESTION: ${question}
+
+ANSWER:`;
+    
+    // Call the OpenRouter API directly
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openRouterApiKey}`,
+        "HTTP-Referer": "https://openrouter.ai/",
+        "X-Title": "Project Clay Chatbot"
+      },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 400,
+        temperature: 0.2
+      })
     });
+    
+    const result = await response.json();
+    
+    if (!response.ok || !result.choices || result.choices.length === 0) {
+      throw new Error(result.error?.message || "Failed to generate answer");
+    }
+    
+    const answer = result.choices[0].message.content;
     
     // Format the response
     return {
       success: true,
-      answer: response.text,
-      sourceDocuments: response.sourceDocuments,
+      answer: answer,
+      sourceDocuments: retrievalResult.results.map(r => ({
+        pageContent: r.text,
+        metadata: r.metadata
+      })),
     };
   } catch (error) {
     console.error(`Error asking question: ${error}`);

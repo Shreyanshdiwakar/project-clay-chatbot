@@ -1,17 +1,97 @@
 /**
- * LangChain Vector Store Service
+ * Simple Vector Store Service
  * 
- * This module provides functions for working with Chroma vector database.
+ * This module provides a simple in-memory vector store implementation.
  */
 
-import { Chroma } from "@langchain/community/vectorstores/chroma";
-import { MemoryVectorStore } from "langchain/vectorstores/memory";
 import { VectorStoreConfig, RetrievalResult, QueryResult } from "./types";
 import { getEmbeddings } from "./embeddings";
+import { Document } from "@langchain/core/documents";
 import path from "path";
 
+/**
+ * Simple in-memory vector store implementation
+ */
+class SimpleVectorStore {
+  private documents: Document[] = [];
+  private embeddings: any;
+  private collectionName: string;
+  
+  constructor(embeddings: any, collectionName: string) {
+    this.embeddings = embeddings;
+    this.collectionName = collectionName;
+  }
+  
+  /**
+   * Add documents to the vector store
+   */
+  async addDocuments(documents: Document[]): Promise<void> {
+    this.documents.push(...documents);
+    console.log(`Added ${documents.length} documents to SimpleVectorStore collection ${this.collectionName}`);
+  }
+  
+  /**
+   * Calculate cosine similarity between two vectors
+   */
+  private cosineSimilarity(vecA: number[], vecB: number[]): number {
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    
+    for (let i = 0; i < vecA.length; i++) {
+      dotProduct += vecA[i] * vecB[i];
+      normA += vecA[i] * vecA[i];
+      normB += vecB[i] * vecB[i];
+    }
+    
+    if (normA === 0 || normB === 0) {
+      return 0;
+    }
+    
+    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+  }
+  
+  /**
+   * Search for similar documents based on a query
+   */
+  async similaritySearchWithScore(
+    query: string, 
+    k = 5
+  ): Promise<[Document, number][]> {
+    if (this.documents.length === 0) {
+      return [];
+    }
+    
+    try {
+      // Embed the query
+      const queryEmbedding = await this.embeddings.embedQuery(query);
+      
+      // Embed all documents if needed (in a real implementation, we'd store these)
+      const docEmbeddings: number[][] = [];
+      for (const doc of this.documents) {
+        const embedding = await this.embeddings.embedQuery(doc.pageContent);
+        docEmbeddings.push(embedding);
+      }
+      
+      // Calculate similarities
+      const similarities: [Document, number][] = this.documents.map((doc, i) => {
+        const similarity = this.cosineSimilarity(queryEmbedding, docEmbeddings[i]);
+        return [doc, similarity];
+      });
+      
+      // Sort by similarity (highest first) and take top k
+      return similarities
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, k);
+    } catch (error) {
+      console.error(`Error in similaritySearchWithScore: ${error}`);
+      return [];
+    }
+  }
+}
+
 // Cache vector stores by collection name to prevent duplicate instances
-const vectorStoreCache = new Map<string, Chroma | MemoryVectorStore>();
+const vectorStoreCache = new Map<string, SimpleVectorStore>();
 
 /**
  * Create or get a vector store for a specific collection
@@ -20,7 +100,7 @@ export async function createVectorStore({
   collectionName,
   persistDirectory,
   embeddingModelName
-}: VectorStoreConfig): Promise<Chroma | MemoryVectorStore> {
+}: VectorStoreConfig): Promise<SimpleVectorStore> {
   // Check if we have this store cached
   const cacheKey = `${collectionName}:${persistDirectory}`;
   if (vectorStoreCache.has(cacheKey)) {
@@ -30,56 +110,11 @@ export async function createVectorStore({
   // Get embeddings
   const embeddings = getEmbeddings(embeddingModelName);
 
-  // In production environments, we'll use MemoryVectorStore to avoid issues with Chroma
-  if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-    try {
-      console.log('Using MemoryVectorStore for production environment');
-      const vectorStore = new MemoryVectorStore(embeddings);
-      vectorStoreCache.set(cacheKey, vectorStore);
-      return vectorStore;
-    } catch (error) {
-      console.error(`Error creating MemoryVectorStore: ${error}`);
-      throw error;
-    }
-  }
-  
-  // In development, use Chroma with persistence
-  try {
-    // Create new Chroma client with persistence
-    try {
-      const vectorStore = await Chroma.fromExistingCollection(
-        embeddings,
-        { collectionName }
-      );
-      
-      console.log(`Connected to existing Chroma collection: ${collectionName}`);
-      vectorStoreCache.set(cacheKey, vectorStore);
-      return vectorStore;
-    } catch (error) {
-      console.log(`Creating new Chroma collection: ${collectionName}`);
-      
-      // Create a new collection if one doesn't exist
-      const vectorStore = await Chroma.fromDocuments(
-        [], // Start with empty documents
-        embeddings,
-        {
-          collectionName,
-          url: process.env.CHROMA_URL || undefined,
-          collectionMetadata: {
-            "hnsw:space": "cosine"
-          }
-        }
-      );
-      
-      vectorStoreCache.set(cacheKey, vectorStore);
-      return vectorStore;
-    }
-  } catch (error) {
-    console.error(`Error with Chroma, falling back to MemoryVectorStore: ${error}`);
-    const vectorStore = new MemoryVectorStore(embeddings);
-    vectorStoreCache.set(cacheKey, vectorStore);
-    return vectorStore;
-  }
+  // Create a new simple vector store
+  console.log(`Creating SimpleVectorStore for collection: ${collectionName}`);
+  const vectorStore = new SimpleVectorStore(embeddings, collectionName);
+  vectorStoreCache.set(cacheKey, vectorStore);
+  return vectorStore;
 }
 
 /**

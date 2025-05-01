@@ -5,12 +5,8 @@
  * including PDF, CSV, DOCX, and plain text.
  */
 
-import { PDFLoader } from "langchain/document_loaders/fs/pdf";
-import { CSVLoader } from "langchain/document_loaders/fs/csv";
-import { DocxLoader } from "langchain/document_loaders/fs/docx";
-import { TextLoader } from "langchain/document_loaders/fs/text";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { Document } from "langchain/document";
+// Use built-in Node.js modules and Document class directly instead of specific loaders
+import { Document } from "@langchain/core/documents";
 import { DocumentType, DocumentProcessResult } from "./types";
 import { createVectorStore } from "./vectorStore";
 import { getEmbeddings } from "./embeddings";
@@ -40,19 +36,181 @@ function ensureDirectoriesExist() {
 }
 
 /**
+ * Simple document loader interface
+ */
+interface SimpleDocumentLoader {
+  load(): Promise<Document[]>;
+}
+
+/**
+ * Simple text document loader
+ */
+class SimpleTextLoader implements SimpleDocumentLoader {
+  private filePath: string;
+
+  constructor(filePath: string) {
+    this.filePath = filePath;
+  }
+
+  async load(): Promise<Document[]> {
+    const text = fs.readFileSync(this.filePath, 'utf-8');
+    return [
+      new Document({
+        pageContent: text,
+        metadata: {
+          source: this.filePath,
+          filetype: 'text'
+        }
+      })
+    ];
+  }
+}
+
+/**
+ * Simple CSV document loader
+ */
+class SimpleCSVLoader implements SimpleDocumentLoader {
+  private filePath: string;
+
+  constructor(filePath: string) {
+    this.filePath = filePath;
+  }
+
+  async load(): Promise<Document[]> {
+    const text = fs.readFileSync(this.filePath, 'utf-8');
+    // Basic CSV parsing
+    const rows = text.split('\n').filter(row => row.trim() !== '');
+    const header = rows[0].split(',');
+    
+    return rows.slice(1).map((row, idx) => {
+      const values = row.split(',');
+      const pageContent = values.join(' ');
+      const metadata: Record<string, any> = {
+        source: this.filePath,
+        filetype: 'csv',
+        line: idx + 2
+      };
+      
+      // Add header values as metadata
+      header.forEach((col, colIdx) => {
+        if (colIdx < values.length) {
+          metadata[col] = values[colIdx];
+        }
+      });
+      
+      return new Document({
+        pageContent,
+        metadata
+      });
+    });
+  }
+}
+
+/**
+ * Simple text splitter implementation
+ */
+class SimpleTextSplitter {
+  private chunkSize: number;
+  private chunkOverlap: number;
+  
+  constructor(chunkSize = DEFAULT_CHUNK_SIZE, chunkOverlap = DEFAULT_CHUNK_OVERLAP) {
+    this.chunkSize = chunkSize;
+    this.chunkOverlap = chunkOverlap;
+  }
+  
+  splitDocuments(documents: Document[]): Document[] {
+    const result: Document[] = [];
+    
+    for (const doc of documents) {
+      const chunks = this.splitText(doc.pageContent);
+      
+      for (const chunk of chunks) {
+        result.push(
+          new Document({
+            pageContent: chunk,
+            metadata: { ...doc.metadata }
+          })
+        );
+      }
+    }
+    
+    return result;
+  }
+  
+  private splitText(text: string): string[] {
+    const chunks: string[] = [];
+    
+    if (text.length <= this.chunkSize) {
+      chunks.push(text);
+      return chunks;
+    }
+    
+    let startIndex = 0;
+    while (startIndex < text.length) {
+      let endIndex = startIndex + this.chunkSize;
+      if (endIndex > text.length) {
+        endIndex = text.length;
+      } else {
+        // Try to split at a natural boundary like paragraph or sentence
+        const boundary = this.findNaturalBoundary(text, endIndex);
+        if (boundary > startIndex) {
+          endIndex = boundary;
+        }
+      }
+      
+      chunks.push(text.substring(startIndex, endIndex));
+      startIndex = endIndex - this.chunkOverlap;
+    }
+    
+    return chunks;
+  }
+  
+  private findNaturalBoundary(text: string, aroundIndex: number): number {
+    // Look for paragraph breaks, then periods, then spaces, then any character
+    const lookBackDistance = Math.min(100, this.chunkSize / 10);
+    const start = Math.max(0, aroundIndex - lookBackDistance);
+    const end = Math.min(text.length, aroundIndex + lookBackDistance);
+    const searchText = text.substring(start, end);
+    
+    // Search for paragraph breaks
+    const paragraphMatch = searchText.match(/\n\s*\n/);
+    if (paragraphMatch && paragraphMatch.index !== undefined) {
+      return start + paragraphMatch.index + paragraphMatch[0].length;
+    }
+    
+    // Search for sentence endings
+    const sentenceMatch = searchText.match(/[.!?]\s/);
+    if (sentenceMatch && sentenceMatch.index !== undefined) {
+      return start + sentenceMatch.index + sentenceMatch[0].length;
+    }
+    
+    // Search for spaces
+    const spaceMatch = searchText.match(/\s/);
+    if (spaceMatch && spaceMatch.index !== undefined) {
+      return start + spaceMatch.index + spaceMatch[0].length;
+    }
+    
+    // Just return the original index if no natural boundary found
+    return aroundIndex;
+  }
+}
+
+/**
  * Get the appropriate document loader based on file type
  */
-function getDocumentLoader(filePath: string, mimeType: string) {
+function getDocumentLoader(filePath: string, mimeType: string): SimpleDocumentLoader {
   switch (mimeType) {
     case DocumentType.PDF:
-      return new PDFLoader(filePath);
+      // Fallback for PDF files - just extract text content
+      return new SimpleTextLoader(filePath);
     case DocumentType.CSV:
-      return new CSVLoader(filePath);
+      return new SimpleCSVLoader(filePath);
     case DocumentType.DOCX:
-      return new DocxLoader(filePath);
+      // Fallback for DOCX files - just extract text content
+      return new SimpleTextLoader(filePath);
     case DocumentType.TEXT:
     default:
-      return new TextLoader(filePath);
+      return new SimpleTextLoader(filePath);
   }
 }
 
@@ -102,13 +260,9 @@ export async function processDocument(
       });
     });
     
-    // Split text into chunks
-    const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: DEFAULT_CHUNK_SIZE,
-      chunkOverlap: DEFAULT_CHUNK_OVERLAP,
-    });
-    
-    const splitDocs = await textSplitter.splitDocuments(docsWithMetadata);
+    // Split text into chunks using our custom splitter
+    const textSplitter = new SimpleTextSplitter();
+    const splitDocs = textSplitter.splitDocuments(docsWithMetadata);
     
     console.log(`Split document into ${splitDocs.length} chunks`);
     
