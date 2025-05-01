@@ -101,15 +101,26 @@ export default function Home() {
         throw new Error(errorMessage);
       }
       const data = await response.json();
+      
+      // Validate API response
+      if (!data || typeof data !== 'object') {
+        throw new Error('The API response format was invalid or empty');
+      }
+      
+      // Ensure message property exists
+      if (!data.message) {
+        throw new Error('The API response is missing required fields');
+      }
+      
       let modelInfo: ModelInfo | undefined = undefined;
       if (data.model) {
         modelInfo = {
           id: data.model.id || 'model-' + Date.now(),
-          name: data.model.name,
-          description: data.model.description,
-          features: data.model.features,
-          developer: data.model.developer,
-          parameters: data.model.parameters
+          name: data.model.name || 'Unknown model',
+          description: data.model.description || '',
+          features: data.model.features || [],
+          developer: data.model.developer || '',
+          parameters: data.model.parameters || ''
         };
       }
       const botMessage: Message = {

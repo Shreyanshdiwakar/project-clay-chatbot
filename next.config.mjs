@@ -60,12 +60,6 @@ const nextConfig = {
       process: 'process/browser',
     };
 
-    // Add specific handling for chromadb-default-embed
-    config.module.rules.push({
-      test: /chromadb-default-embed/,
-      use: 'null-loader',
-    });
-
     // Add plugins to provide global variables expected by some packages
     if (!isServer) {
       config.plugins.push(
@@ -76,8 +70,8 @@ const nextConfig = {
       );
     }
 
-    // Ignore specific problematic modules in node_modules
-    config.externals = [...(config.externals || []), { 'chromadb-default-embed': 'commonjs chromadb-default-embed' }];
+    // Ignore chromadb-default-embed
+    config.externals = [...(config.externals || []), 'chromadb-default-embed'];
 
     return config;
   },

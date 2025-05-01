@@ -89,7 +89,7 @@ export const env: EnvConfig = {
   FALLBACK_MODEL: getEnvVar('FALLBACK_MODEL', 'openai/gpt-3.5-turbo'),
   
   // API request configuration
-  MAX_TOKENS: parseInt(getEnvVar('MAX_TOKENS', '800'), 10),
+  MAX_TOKENS: parseInt(getEnvVar('MAX_TOKENS', '400'), 10),
   
   // Node environment
   NODE_ENV: (getEnvVar('NODE_ENV', 'development') as EnvConfig['NODE_ENV']),
