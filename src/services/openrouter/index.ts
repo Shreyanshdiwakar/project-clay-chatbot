@@ -16,6 +16,14 @@ import { ModelInfo } from './types';
 
 // Standard model information used for UI display
 export const MODEL_INFO: Record<string, ModelInfo> = {
+  'microsoft/mai-ds-r1:free': {
+    id: 'microsoft/mai-ds-r1:free',
+    name: 'Microsoft MAI DS-R1 (Free)',
+    description: 'Microsoft\'s free multimodal model with excellent reasoning capabilities',
+    features: ['Reasoning', 'Advising', 'Problem-solving', 'Free tier'],
+    developer: 'Microsoft',
+    parameters: '7 billion'
+  },
   'tng/deepseek-r1t-chimera': {
     id: 'tng/deepseek-r1t-chimera',
     name: 'DeepSeek R1T Chimera',

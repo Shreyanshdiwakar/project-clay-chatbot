@@ -82,6 +82,8 @@ export default function Home() {
     }
 
     try {
+      console.log('Sending message to API:', messageToSend.substring(0, 30) + (messageToSend.length > 30 ? '...' : ''));
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,17 +92,31 @@ export default function Home() {
           pdfContent: extractedText || profileContext || ''
         })
       });
+      
+      console.log('API response status:', response.status, response.statusText);
+      
+      // First check if response is ok before trying to parse JSON
       if (!response.ok) {
-        let errorMessage = 'Failed to get response';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (jsonError) {
-          errorMessage = response.statusText || errorMessage;
-        }
-        throw new Error(errorMessage);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
-      const data = await response.json();
+      
+      // Try to read the response text first
+      const responseText = await response.text();
+      console.log('Response text length:', responseText.length);
+      
+      // Only try to parse as JSON if we have some content
+      if (!responseText || responseText.trim() === '') {
+        throw new Error('The API returned an empty response');
+      }
+      
+      // Now try to parse the JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error('JSON parsing error:', jsonError);
+        throw new Error(`Invalid JSON in response: ${String(jsonError)}`);
+      }
       
       // Validate API response
       if (!data || typeof data !== 'object') {

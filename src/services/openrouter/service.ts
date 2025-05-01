@@ -197,9 +197,27 @@ export async function getModelResponse(
 
   let response = await callOpenRouterAPI(env.PRIMARY_MODEL, userMessage, pdfContent);
   
+  // Check for credit limit error specifically
+  if (!response.success && response.error && 
+      (response.error.includes('requires more credits') || 
+       response.error.includes('fewer max_tokens') ||
+       response.error.includes('Token limit exceeded'))) {
+    console.log(`Credit limit exceeded, falling back to mock response`);
+    return getMockResponse(userMessage);
+  }
+  
   if (!response.success && response.error) {
     console.log(`Primary model (${env.PRIMARY_MODEL}) failed with error: ${response.error}. Trying fallback model...`);
     response = await callOpenRouterAPI(env.FALLBACK_MODEL, userMessage, pdfContent);
+    
+    // If fallback also fails with credit limit, use mock
+    if (!response.success && response.error && 
+        (response.error.includes('requires more credits') || 
+         response.error.includes('fewer max_tokens') ||
+         response.error.includes('Token limit exceeded'))) {
+      console.log(`Fallback model also hit credit limit, using mock response`);
+      return getMockResponse(userMessage);
+    }
   }
   
   return response;
