@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 
+import webpack from 'webpack';
+const { ProvidePlugin } = webpack;
 const nextConfig = {
   // Simplified output format for Vercel
   output: 'standalone',
@@ -54,8 +56,8 @@ const nextConfig = {
       os: false,
       constants: false,
       assert: false,
-      buffer: require.resolve('buffer/'),
-      process: require.resolve('process/browser'),
+      buffer: 'buffer/',
+      process: 'process/browser',
     };
 
     // Add specific handling for chromadb-default-embed
@@ -67,7 +69,7 @@ const nextConfig = {
     // Add plugins to provide global variables expected by some packages
     if (!isServer) {
       config.plugins.push(
-        new config.constructor.ProvidePlugin({
+        new ProvidePlugin({
           process: 'process/browser',
           Buffer: ['buffer', 'Buffer'],
         })
