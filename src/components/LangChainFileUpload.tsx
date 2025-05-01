@@ -61,7 +61,24 @@ export const LangChainFileUpload = ({
         throw new Error(`Server returned non-JSON response: ${contentType}`);
       }
 
-      const data = await response.json();
+      // Additional check for empty response
+      if (!response.ok) {
+        const statusText = response.statusText;
+        throw new Error(`Server responded with ${response.status}: ${statusText}`);
+      }
+
+      // Safely try to parse JSON
+      let data;
+      try {
+        const text = await response.text();
+        if (!text || text.trim() === '') {
+          throw new Error('Empty response from server');
+        }
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Error parsing JSON response:', parseError);
+        throw new Error('Invalid response format from server. Please try again.');
+      }
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to process document');
@@ -78,6 +95,8 @@ export const LangChainFileUpload = ({
         errorMessage = 'The server returned an HTML error page instead of JSON. Please try again later.';
       } else if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
         errorMessage = 'Network error while uploading file. Please check your internet connection and try again.';
+      } else if (errorMessage.includes('Invalid response format') || errorMessage.includes('Empty response')) {
+        errorMessage = 'The API response format was invalid or empty. This may be due to missing API keys or configuration issues.';
       }
       
       onError(errorMessage);
