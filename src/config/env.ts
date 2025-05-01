@@ -25,9 +25,6 @@ interface EnvConfig {
   // Deployment info
   IS_VERCEL: boolean;
   VERCEL_ENV?: string;
-  
-  // API request configuration
-  MAX_TOKENS: number;
 }
 
 /**
@@ -87,9 +84,6 @@ export const env: EnvConfig = {
   // Model configuration
   PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'deepseek/deepseek-chat'),
   FALLBACK_MODEL: getEnvVar('FALLBACK_MODEL', 'openai/gpt-3.5-turbo'),
-  
-  // API request configuration
-  MAX_TOKENS: parseInt(getEnvVar('MAX_TOKENS', '400'), 10),
   
   // Node environment
   NODE_ENV: (getEnvVar('NODE_ENV', 'development') as EnvConfig['NODE_ENV']),

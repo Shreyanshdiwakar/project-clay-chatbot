@@ -96,7 +96,6 @@ export async function callOpenRouterAPI(
           content: userMessage
         }
       ],
-      max_tokens: env.MAX_TOKENS,
       temperature: 0.7
     };
     
@@ -134,11 +133,10 @@ export async function callOpenRouterAPI(
         
         // Handle token limit errors specifically
         if (errorText.includes('requires more credits') || 
-            errorText.includes('fewer max_tokens') || 
             response.status === 402) {
           return {
             success: false,
-            error: `Token limit exceeded. Please reduce MAX_TOKENS setting (currently ${env.MAX_TOKENS}): ${errorText}`
+            error: `API credit limit exceeded: ${errorText}`
           };
         }
       } catch {
@@ -197,12 +195,12 @@ export async function getModelResponse(
 
   let response = await callOpenRouterAPI(env.PRIMARY_MODEL, userMessage, pdfContent);
   
-  // Check for credit limit error specifically
+  // Check for auth errors or credit limit errors - use mock response
   if (!response.success && response.error && 
       (response.error.includes('requires more credits') || 
-       response.error.includes('fewer max_tokens') ||
-       response.error.includes('Token limit exceeded'))) {
-    console.log(`Credit limit exceeded, falling back to mock response`);
+       response.error.includes('No auth credentials') ||
+       response.error.includes('401'))) {
+    console.log(`API authentication or credit issue, falling back to mock response`);
     return getMockResponse(userMessage);
   }
   
@@ -210,12 +208,12 @@ export async function getModelResponse(
     console.log(`Primary model (${env.PRIMARY_MODEL}) failed with error: ${response.error}. Trying fallback model...`);
     response = await callOpenRouterAPI(env.FALLBACK_MODEL, userMessage, pdfContent);
     
-    // If fallback also fails with credit limit, use mock
+    // If fallback also fails with auth or credit limit, use mock
     if (!response.success && response.error && 
         (response.error.includes('requires more credits') || 
-         response.error.includes('fewer max_tokens') ||
-         response.error.includes('Token limit exceeded'))) {
-      console.log(`Fallback model also hit credit limit, using mock response`);
+         response.error.includes('No auth credentials') ||
+         response.error.includes('401'))) {
+      console.log(`Fallback model has auth or credit issues, using mock response`);
       return getMockResponse(userMessage);
     }
   }

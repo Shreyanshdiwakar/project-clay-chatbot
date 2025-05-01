@@ -95,27 +95,28 @@ export default function Home() {
       
       console.log('API response status:', response.status, response.statusText);
       
-      // First check if response is ok before trying to parse JSON
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      // Try to read the response text first
-      const responseText = await response.text();
-      console.log('Response text length:', responseText.length);
-      
-      // Only try to parse as JSON if we have some content
-      if (!responseText || responseText.trim() === '') {
-        throw new Error('The API returned an empty response');
-      }
-      
-      // Now try to parse the JSON
       let data;
+      
       try {
-        data = JSON.parse(responseText);
-      } catch (jsonError) {
-        console.error('JSON parsing error:', jsonError);
-        throw new Error(`Invalid JSON in response: ${String(jsonError)}`);
+        // Try to get response text first
+        const responseText = await response.text();
+        
+        // Try to parse as JSON if we have content
+        if (responseText && responseText.trim() !== '') {
+          try {
+            data = JSON.parse(responseText);
+          } catch (e) {
+            console.error('Error parsing JSON response:', e);
+            throw new Error('Failed to parse API response');
+          }
+        } else if (!response.ok) {
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        } else {
+          throw new Error('The API returned an empty response');
+        }
+      } catch (err) {
+        console.error('Error reading API response:', err);
+        throw new Error(`Failed to read API response: ${err instanceof Error ? err.message : String(err)}`);
       }
       
       // Validate API response
