@@ -12,6 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LangChainFileUpload } from '@/components/LangChainFileUpload';
 import { LangChainQuery } from '@/components/LangChainQuery';
 import { KnowledgeBaseManager } from '@/components/KnowledgeBaseManager';
+import { StudentQuestionnaire, StudentProfile } from '@/components/StudentQuestionnaire';
+import { generateRecommendations, RecommendationResponse } from '@/services/recommendations';
+import { AlertCircle, BookOpen, Award, Calendar, Trophy } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -24,10 +29,40 @@ export default function Home() {
   const [knowledgeBaseDocuments, setKnowledgeBaseDocuments] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Student profile and recommendations states
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
+  const [recommendations, setRecommendations] = useState<RecommendationResponse | null>(null);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Check for existing profile in local storage on component mount
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('studentProfile');
+    if (savedProfile) {
+      try {
+        const parsedProfile = JSON.parse(savedProfile);
+        setStudentProfile(parsedProfile);
+
+        // Also check for saved recommendations
+        const savedRecommendations = localStorage.getItem('recommendations');
+        if (savedRecommendations) {
+          setRecommendations(JSON.parse(savedRecommendations));
+        }
+      } catch (e) {
+        console.error('Error parsing saved profile:', e);
+      }
+    } else {
+      // Show questionnaire for new users after a short delay
+      setTimeout(() => {
+        setShowQuestionnaire(true);
+      }, 1000);
+    }
+  }, []);
 
   const handleSendMessage = async (content: string, files?: File[]) => {
     // If no message but files are present, use a default message
@@ -85,12 +120,16 @@ export default function Home() {
     try {
       console.log('Sending message to API:', messageToSend.substring(0, 30) + (messageToSend.length > 30 ? '...' : ''));
       
+      // Include profile context if available
+      const profileCtx = studentProfile ? `Student Profile: ${JSON.stringify(studentProfile)}` : '';
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: messageToSend,
-          pdfContent: extractedText || profileContext || ''
+          pdfContent: extractedText || profileContext || '',
+          profileContext: profileCtx
         })
       });
       
@@ -213,20 +252,81 @@ export default function Home() {
     }
   };
 
+  const handleProfileComplete = async (profile: StudentProfile) => {
+    setStudentProfile(profile);
+    setShowQuestionnaire(false);
+    localStorage.setItem('studentProfile', JSON.stringify(profile));
+
+    // Generate welcome message based on the profile
+    const welcomeMessage: Message = {
+      id: Date.now().toString(),
+      content: `👋 **Welcome, ${profile.name}!**\n\nThanks for sharing your information. I'm generating personalized recommendations based on your profile. I'll help you navigate the college admissions process and suggest activities that align with your interests in ${profile.intendedMajor}.`,
+      role: 'assistant',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, welcomeMessage]);
+
+    // Generate recommendations
+    setIsLoadingRecommendations(true);
+    try {
+      const recs = await generateRecommendations(profile);
+      setRecommendations(recs);
+      localStorage.setItem('recommendations', JSON.stringify(recs));
+
+      // Add a message about the recommendations
+      const recsMessage: Message = {
+        id: Date.now().toString(),
+        content: "✅ **Your personalized recommendations are ready!**\n\nI've created tailored suggestions for projects, competitions, and skills to develop. You can view them in the Recommendations tab. Feel free to ask me any questions about these recommendations or college admissions in general.",
+        role: 'assistant',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, recsMessage]);
+    } catch (error) {
+      console.error('Error generating recommendations:', error);
+      setError('Failed to generate recommendations. Please try again later.');
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  };
+
+  const handleSkipQuestionnaire = () => {
+    setShowQuestionnaire(false);
+    const welcomeMessage: Message = {
+      id: Date.now().toString(),
+      content: "👋 **Welcome to the College Counseling Assistant!**\n\nYou can always complete the student profile questionnaire later to get personalized recommendations. Feel free to ask any questions about college admissions, applications, or academic planning.",
+      role: 'assistant',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, welcomeMessage]);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white overflow-hidden">
       <Header />
 
+      {/* Student Questionnaire Modal */}
+      {showQuestionnaire && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl">
+            <StudentQuestionnaire 
+              onComplete={handleProfileComplete} 
+              onSkip={handleSkipQuestionnaire} 
+            />
+          </div>
+        </div>
+      )}
+
       <main className="flex-1 w-full p-2 md:p-4 max-w-7xl mx-auto overflow-hidden">
         <Tabs defaultValue="chat" className="w-full">
-          <TabsList className="grid grid-cols-3 mb-4">
+          <TabsList className="grid grid-cols-4 mb-4">
             <TabsTrigger value="chat">Chat</TabsTrigger>
+            <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
             <TabsTrigger value="knowledgeBase">Knowledge Base</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
           
           <TabsContent value="chat" className="space-y-4 h-[calc(100vh-12rem)] flex flex-col">
-            {/* Rest of the chat UI */}
+            {/* Chat UI */}
             <div className="flex-1 overflow-y-auto space-y-4 px-2 pt-4 pb-0">
               {messages.map(message => (
                 <ChatMessage
@@ -248,6 +348,152 @@ export default function Home() {
             <div className="pt-2">
               <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="recommendations">
+            {!studentProfile ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Complete Your Profile</CardTitle>
+                  <CardDescription>
+                    Fill out your student profile to get personalized recommendations
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <Alert className="bg-blue-500/10 border-blue-500/30">
+                      <AlertCircle className="h-5 w-5 text-blue-400" />
+                      <AlertTitle>Profile Required</AlertTitle>
+                      <AlertDescription>
+                        Complete the student questionnaire to get personalized recommendations for your college journey.
+                      </AlertDescription>
+                    </Alert>
+                    <Button 
+                      onClick={() => setShowQuestionnaire(true)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Start Questionnaire
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : isLoadingRecommendations ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Generating Recommendations</CardTitle>
+                  <CardDescription>
+                    Please wait while we create personalized recommendations based on your profile
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center py-8">
+                  <ThinkingIndicator steps={[]} />
+                </CardContent>
+              </Card>
+            ) : recommendations ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="bg-zinc-900 border-zinc-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5 text-blue-400" />
+                      Suggested Projects
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {recommendations.suggestedProjects.map((project, idx) => (
+                        <li key={idx} className="flex gap-2 items-start">
+                          <span className="text-blue-400 mt-1">•</span>
+                          <span>{project}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-zinc-900 border-zinc-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-amber-400" />
+                      Suggested Competitions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {recommendations.suggestedCompetitions.map((comp, idx) => (
+                        <li key={idx} className="flex gap-2 items-start">
+                          <span className="text-amber-400 mt-1">•</span>
+                          <span>{comp}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-zinc-900 border-zinc-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-purple-400" />
+                      Skills to Develop
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {recommendations.suggestedSkills.map((skill, idx) => (
+                        <li key={idx} className="flex gap-2 items-start">
+                          <span className="text-purple-400 mt-1">•</span>
+                          <span>{skill}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-zinc-900 border-zinc-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-green-400" />
+                      Timeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {recommendations.timeline.map((item, idx) => (
+                        <li key={idx} className="flex gap-2 items-start">
+                          <span className="text-green-400 mt-1">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="md:col-span-2 bg-zinc-900 border-zinc-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle>Profile Analysis</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-zinc-300">{recommendations.profileAnalysis}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recommendations Not Available</CardTitle>
+                  <CardDescription>
+                    There was an issue generating your recommendations
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    onClick={() => handleProfileComplete(studentProfile)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Try Again
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           <TabsContent value="knowledgeBase">

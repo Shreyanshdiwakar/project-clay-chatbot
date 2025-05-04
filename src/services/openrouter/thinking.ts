@@ -55,7 +55,7 @@ const THINKING_STEP_MAP: Record<string, string> = {
 /**
  * Generate thinking steps based on message content
  */
-export function generateThinkingSteps(message: string, pdfContent?: string | null): string[] {
+export function generateThinkingSteps(message: string, pdfContent?: string | null, profileContext?: string | null): string[] {
   // Convert message to lowercase for case-insensitive matching
   const lowerCaseMessage = message.toLowerCase();
   
@@ -64,9 +64,14 @@ export function generateThinkingSteps(message: string, pdfContent?: string | nul
     "Processing your question..."
   ];
 
+  // Add profile-specific steps if content is provided
+  if (profileContext) {
+    steps.push("Considering your student profile data");
+  }
+
   // Add PDF-specific step if PDF content is provided
   if (pdfContent) {
-    steps.push("Analyzing your profile data");
+    steps.push("Analyzing your application data");
   }
 
   // Check for keyword matches in the message

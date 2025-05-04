@@ -8,6 +8,8 @@ import { ModelInfo } from '@/services/openrouter';
 export interface ChatRequest {
   message: string;
   pdfContent?: string | null;
+  profileContext?: string | null;
+  isProfileQuery?: boolean;
 }
 
 // Response types

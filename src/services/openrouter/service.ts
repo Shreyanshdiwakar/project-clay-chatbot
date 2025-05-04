@@ -6,7 +6,7 @@ import {
   ModelResponse
 } from './types';
 
-export function createSystemPrompt(pdfContent?: string | null): string {
+export function createSystemPrompt(pdfContent?: string | null, profileContext?: string | null): string {
   let systemPrompt = `You are a friendly academic counselor helping high school students plan extracurricular activities to improve their college applications. Ask follow-up questions if needed.
 
 Format your responses with clean, readable Markdown:
@@ -27,6 +27,14 @@ Example formatting structure:
 1. First step
 2. Second step
 3. Third step`;
+
+  if (profileContext) {
+    systemPrompt += `\n\n**IMPORTANT - STUDENT PROFILE FROM QUESTIONNAIRE:**
+    
+${profileContext}
+
+Use the above student profile information to provide personalized advice specifically tailored to this student's background, interests, and academic goals. Reference specific details from their profile when relevant.`;
+  }
 
   if (pdfContent) {
     const maxPdfLength = 12000;
@@ -69,7 +77,8 @@ function getMockResponse(userMessage: string): ModelResponse {
 export async function callOpenRouterAPI(
   model: string, 
   userMessage: string, 
-  pdfContent?: string | null
+  pdfContent?: string | null,
+  profileContext?: string | null
 ): Promise<ModelResponse> {
   try {
     console.log(`Sending request to OpenRouter API using ${model}...`);
@@ -82,7 +91,7 @@ export async function callOpenRouterAPI(
     
     console.log(`API key length: ${apiKey.length}, prefix: ${apiKey.substring(0, 3)}, suffix: ${apiKey.substring(apiKey.length - 3)}`);
     
-    const systemPrompt = createSystemPrompt(pdfContent);
+    const systemPrompt = createSystemPrompt(pdfContent, profileContext);
 
     const requestBody: ChatCompletionRequest = {
       model: model,
@@ -186,14 +195,15 @@ export async function callOpenRouterAPI(
 
 export async function getModelResponse(
   userMessage: string, 
-  pdfContent?: string | null
+  pdfContent?: string | null,
+  profileContext?: string | null
 ): Promise<ModelResponse> {
   // For development without API key, use mock response
   if (process.env.NODE_ENV === 'development' && (!env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY.length < 10)) {
     return getMockResponse(userMessage);
   }
 
-  let response = await callOpenRouterAPI(env.PRIMARY_MODEL, userMessage, pdfContent);
+  let response = await callOpenRouterAPI(env.PRIMARY_MODEL, userMessage, pdfContent, profileContext);
   
   // Check for auth errors or credit limit errors - use mock response
   if (!response.success && response.error && 
@@ -206,7 +216,7 @@ export async function getModelResponse(
   
   if (!response.success && response.error) {
     console.log(`Primary model (${env.PRIMARY_MODEL}) failed with error: ${response.error}. Trying fallback model...`);
-    response = await callOpenRouterAPI(env.FALLBACK_MODEL, userMessage, pdfContent);
+    response = await callOpenRouterAPI(env.FALLBACK_MODEL, userMessage, pdfContent, profileContext);
     
     // If fallback also fails with auth or credit limit, use mock
     if (!response.success && response.error && 

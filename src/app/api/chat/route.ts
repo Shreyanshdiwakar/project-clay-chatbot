@@ -26,7 +26,7 @@ export async function POST(request: Request): Promise<NextResponse<ChatResponse 
     const body = await request.json() as ChatRequest;
     console.log('Request body:', body);
     
-    const { message, pdfContent } = body;
+    const { message, pdfContent, profileContext } = body;
 
     // Validate required fields
     if (!message) {
@@ -50,10 +50,10 @@ export async function POST(request: Request): Promise<NextResponse<ChatResponse 
     }
 
     // Generate thinking steps for the response
-    const thinkingSteps = generateThinkingSteps(message, pdfContent);
+    const thinkingSteps = generateThinkingSteps(message, pdfContent, profileContext);
 
     // Get model response
-    const modelResponse = await getModelResponse(message, pdfContent);
+    const modelResponse = await getModelResponse(message, pdfContent, profileContext);
     
     // Handle unsuccessful response
     if (!modelResponse.success) {
