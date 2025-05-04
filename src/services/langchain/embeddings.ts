@@ -94,9 +94,12 @@ export function getEmbeddings(modelName?: string): Embeddings {
       private simpleHash(text: string): number[] {
         const embedding = new Array(this.dimension).fill(0);
         
+        // Ensure text is a string to avoid type issues
+        const safeText = text ? String(text) : "";
+        
         // Create a simple hash-based embedding (not for production use)
-        for (let i = 0; i < text.length; i++) {
-          const charCode = text.charCodeAt(i);
+        for (let i = 0; i < safeText.length; i++) {
+          const charCode = safeText.charCodeAt(i);
           embedding[i % this.dimension] += charCode / 255;
         }
         
@@ -106,11 +109,24 @@ export function getEmbeddings(modelName?: string): Embeddings {
       }
 
       override async embedDocuments(documents: string[]): Promise<number[][]> {
-        return documents.map(doc => this.simpleHash(doc));
+        // Defensive check for null/undefined documents
+        if (!documents || !Array.isArray(documents)) {
+          console.warn('Invalid documents array provided to embedDocuments');
+          return [];
+        }
+        
+        // Filter out null/undefined values and ensure strings
+        const safeDocuments = documents
+          .filter(doc => doc !== null && doc !== undefined)
+          .map(doc => String(doc));
+        
+        return safeDocuments.map(doc => this.simpleHash(doc));
       }
 
       override async embedQuery(query: string): Promise<number[]> {
-        return this.simpleHash(query);
+        // Ensure query is a string
+        const safeQuery = query ? String(query) : "";
+        return this.simpleHash(safeQuery);
       }
     }();
     

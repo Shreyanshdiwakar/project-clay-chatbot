@@ -2,6 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Loader2, X, Upload, Check } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface LangChainFileUploadProps {
   onFileProcess: (result: any) => void;
@@ -24,6 +26,7 @@ export const LangChainFileUpload = ({
 }: LangChainFileUploadProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,12 +35,14 @@ export const LangChainFileUpload = ({
 
     const MAX_FILE_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
+      toast.error(`File size too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
       onError(`File size too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
       return;
     }
 
     setFileName(file.name);
     setIsUploading(true);
+    setUploadProgress(10); // Start progress
 
     try {
       const formData = new FormData();
@@ -50,11 +55,14 @@ export const LangChainFileUpload = ({
       });
 
       console.log(`Uploading file: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+      setUploadProgress(30); // Update progress
 
       const response = await fetch('/api/langchain/process-document', {
         method: 'POST',
         body: formData,
       });
+
+      setUploadProgress(70); // Update progress
 
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
@@ -66,6 +74,8 @@ export const LangChainFileUpload = ({
         const statusText = response.statusText;
         throw new Error(`Server responded with ${response.status}: ${statusText}`);
       }
+
+      setUploadProgress(90); // Almost done
 
       // Safely try to parse JSON
       let data;
@@ -85,6 +95,8 @@ export const LangChainFileUpload = ({
       }
 
       console.log(`Document processed successfully. ID: ${data.documentId}, chunks: ${data.chunks}`);
+      setUploadProgress(100); // Complete
+      toast.success(`Document processed: ${data.chunks} chunks created`);
       onFileProcess(data);
     } catch (err) {
       console.error('Document processing error:', err);
@@ -99,14 +111,29 @@ export const LangChainFileUpload = ({
         errorMessage = 'The API response format was invalid or empty. This may be due to missing API keys or configuration issues.';
       }
       
+      toast.error(errorMessage);
       onError(errorMessage);
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
   const triggerFileUpload = () => {
     fileInputRef.current?.click();
+  };
+
+  const renderProgressBar = () => {
+    if (!isUploading || uploadProgress === 0) return null;
+    
+    return (
+      <div className="w-full bg-zinc-700 rounded-full h-1.5 mt-2">
+        <div 
+          className="bg-green-500 h-1.5 rounded-full transition-all duration-300 ease-in-out" 
+          style={{ width: `${uploadProgress}%` }}
+        />
+      </div>
+    );
   };
 
   return (
@@ -125,32 +152,19 @@ export const LangChainFileUpload = ({
         className={`${isCompact ? 'p-2' : ''} border-zinc-700 text-white hover:bg-zinc-700 hover:text-white`}
         type="button"
       >
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          fill="none" 
-          viewBox="0 0 24 24" 
-          strokeWidth={1.5} 
-          stroke="currentColor" 
-          className={`${isCompact ? 'w-5 h-5' : 'w-5 h-5 mr-2'}`}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-        </svg>
+        {isUploading ? (
+          <Loader2 className={`${isCompact ? 'w-5 h-5' : 'w-5 h-5 mr-2'} animate-spin`} />
+        ) : (
+          <Upload className={`${isCompact ? 'w-5 h-5' : 'w-5 h-5 mr-2'}`} />
+        )}
         {!isCompact && (
           <span>{isUploading ? 'Processing...' : 'Upload Document'}</span>
         )}
       </Button>
+      {renderProgressBar()}
       {fileName && !isUploading && !isCompact && (
         <div className="mt-2 text-sm text-zinc-400 flex items-center">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            strokeWidth={1.5} 
-            stroke="currentColor" 
-            className="w-4 h-4 mr-1 text-green-500"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
+          <Check className="w-4 h-4 mr-1 text-green-500" />
           {fileName} processed successfully
         </div>
       )}

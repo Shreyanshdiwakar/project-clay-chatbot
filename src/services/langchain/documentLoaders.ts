@@ -13,6 +13,7 @@ import { getEmbeddings } from "./embeddings";
 import path from "path";
 import fs from "fs";
 import { v4 as uuidv4 } from "uuid";
+import { PdfReader } from "pdfreader";
 
 // Default chunk size and overlap for text splitting
 const DEFAULT_CHUNK_SIZE = 800;
@@ -196,13 +197,211 @@ class SimpleTextSplitter {
 }
 
 /**
+ * Simple PDF document loader using pdfreader with table handling
+ */
+class SimplePDFLoader implements SimpleDocumentLoader {
+  private filePath: string;
+
+  constructor(filePath: string) {
+    this.filePath = filePath;
+  }
+
+  async load(): Promise<Document[]> {
+    return new Promise((resolve, reject) => {
+      try {
+        const buffer = fs.readFileSync(this.filePath);
+        
+        // Track pages and text items with their positions
+        const pageTexts: Record<number, {text: string, x: number, y: number}[]> = {};
+        let currentPage = 0;
+        
+        console.log('Starting PDF parsing with simplified approach');
+        
+        try {
+          new PdfReader().parseBuffer(buffer, (err: Error | string | null, item: any) => {
+            if (err) {
+              console.error('PDF parsing error:', err);
+              // Continue instead of rejecting - try to get partial content
+              console.log('Continuing PDF parsing despite error');
+            }
+            
+            // End of file - process all collected data
+            if (!item) {
+              try {
+                console.log(`Parsed ${Object.keys(pageTexts).length} pages from PDF`);
+                
+                // Handle case with no pages extracted
+                if (Object.keys(pageTexts).length === 0) {
+                  console.log('No content extracted from PDF, returning empty document');
+                  resolve([
+                    new Document({
+                      pageContent: "No content could be extracted from this PDF.",
+                      metadata: {
+                        source: this.filePath,
+                        filetype: 'pdf',
+                        page: 1,
+                        extraction_error: 'No content extracted'
+                      }
+                    })
+                  ]);
+                  return;
+                }
+
+                // SIMPLIFIED APPROACH FOR TABLES:
+                // Group text by approximate y-position (row) first
+                const docs: Document[] = [];
+                
+                // Process each page
+                Object.keys(pageTexts).forEach((pageNumStr) => {
+                  const pageNum = parseInt(pageNumStr);
+                  const items = pageTexts[pageNum] || [];
+                  
+                  if (items.length === 0) {
+                    return; // Skip empty pages
+                  }
+                  
+                  console.log(`Processing page ${pageNum} with ${items.length} text items`);
+                  
+                  // Group by rows (items with similar y values)
+                  const rowGroups: Record<string, {text: string, x: number, y: number}[]> = {};
+                  
+                  // Use a larger tolerance for row grouping in tables
+                  const ROW_TOLERANCE = 0.5;
+                  
+                  items.forEach(item => {
+                    // Round y to nearest multiple of tolerance to group rows
+                    const rowKey = Math.round(item.y / ROW_TOLERANCE) * ROW_TOLERANCE;
+                    if (!rowGroups[rowKey]) {
+                      rowGroups[rowKey] = [];
+                    }
+                    rowGroups[rowKey].push(item);
+                  });
+                  
+                  // Sort rows by y position (top to bottom)
+                  const sortedRowKeys = Object.keys(rowGroups)
+                    .map(key => parseFloat(key))
+                    .sort((a, b) => a - b);
+                  
+                  // Format each row - sort by x position (left to right)
+                  const formattedRows = sortedRowKeys.map(rowKey => {
+                    const rowItems = rowGroups[rowKey];
+                    
+                    // Sort row items by x position
+                    rowItems.sort((a, b) => a.x - b.x);
+                    
+                    // Join items with tabs to preserve table structure
+                    return rowItems.map(item => item.text).join('\t');
+                  });
+                  
+                  // Join rows with newlines
+                  const pageContent = formattedRows.join('\n');
+                  
+                  // Create a document for the page
+                  docs.push(
+                    new Document({
+                      pageContent,
+                      metadata: {
+                        source: this.filePath,
+                        filetype: 'pdf',
+                        page: pageNum
+                      }
+                    })
+                  );
+                });
+                
+                // If we extracted something, return it
+                if (docs.length > 0) {
+                  console.log(`Successfully created ${docs.length} documents from PDF`);
+                  resolve(docs);
+                  return;
+                }
+                
+                // Fallback if no docs were created
+                resolve([
+                  new Document({
+                    pageContent: "PDF parsed but content extraction failed.",
+                    metadata: {
+                      source: this.filePath,
+                      filetype: 'pdf',
+                      error: 'Content extraction failed'
+                    }
+                  })
+                ]);
+              } catch (processError) {
+                console.error('Error in final PDF content processing:', processError);
+                resolve([
+                  new Document({
+                    pageContent: "Error processing PDF content.",
+                    metadata: {
+                      source: this.filePath,
+                      filetype: 'pdf',
+                      error: processError instanceof Error ? processError.message : String(processError)
+                    }
+                  })
+                ]);
+              }
+              return;
+            }
+            
+            // New page
+            if (item && item.page) {
+              currentPage = item.page;
+              if (!pageTexts[currentPage]) {
+                pageTexts[currentPage] = [];
+              }
+            }
+            
+            // Text content
+            if (item && item.text && item.x !== undefined && item.y !== undefined) {
+              if (!pageTexts[currentPage]) {
+                pageTexts[currentPage] = [];
+              }
+              
+              // Store text with position
+              pageTexts[currentPage].push({
+                text: item.text,
+                x: item.x,
+                y: item.y
+              });
+            }
+          });
+        } catch (parserError) {
+          console.error('Fatal PDF parsing error:', parserError);
+          resolve([
+            new Document({
+              pageContent: "PDF parsing failed due to a fatal error.",
+              metadata: {
+                source: this.filePath,
+                filetype: 'pdf',
+                error: parserError instanceof Error ? parserError.message : String(parserError)
+              }
+            })
+          ]);
+        }
+      } catch (fileError) {
+        console.error('Error reading PDF file:', fileError);
+        resolve([
+          new Document({
+            pageContent: "Error reading PDF file.",
+            metadata: {
+              source: this.filePath,
+              filetype: 'pdf',
+              error: fileError instanceof Error ? fileError.message : String(fileError)
+            }
+          })
+        ]);
+      }
+    });
+  }
+}
+
+/**
  * Get the appropriate document loader based on file type
  */
 function getDocumentLoader(filePath: string, mimeType: string): SimpleDocumentLoader {
   switch (mimeType) {
     case DocumentType.PDF:
-      // Fallback for PDF files - just extract text content
-      return new SimpleTextLoader(filePath);
+      return new SimplePDFLoader(filePath);
     case DocumentType.CSV:
       return new SimpleCSVLoader(filePath);
     case DocumentType.DOCX:
