@@ -12,7 +12,7 @@ export const ChatInterface = () => {
     {
       id: '1',
       role: 'assistant',
-      content: "Hello! I'm your academic counselor powered by DeepSeek r1. I can help you plan extracurricular activities that align with your college goals. To get started, could you tell me what grade you're in and what your interests are?"
+      content: "👋 Hello! I'm your Educational Consultant specializing in international university admissions. I'm here to help you navigate the process of applying to universities worldwide, including the US, UK, Canada, Australia, Europe, and Asia.\n\n**How can I assist you today?**\n\n- Need help with university selection?\n- Questions about standardized tests like SAT, ACT, TOEFL, or IELTS?\n- Want guidance on application timelines?\n- Looking for scholarship information?\n- Need advice on personal statements or essays?\n\nPlease share some details about your academic background, target countries, and intended major so I can provide personalized guidance!"
     }
   ]);
   const [input, setInput] = useState('');
@@ -32,15 +32,15 @@ export const ChatInterface = () => {
         const response = await fetch('/api/check-env');
         if (response.ok) {
           const data = await response.json();
-          setApiKeyConfigured(data.openrouterApiKey === 'set');
+          setApiKeyConfigured(data.openaiApiKey === 'set');
           
-          if (data.openrouterApiKey !== 'set') {
+          if (data.openaiApiKey !== 'set') {
             setMessages(prev => [
               ...prev,
               {
                 id: 'api-warning',
                 role: 'assistant',
-                content: 'The OpenRouter API key is not configured. Please add your API key to the .env.local file and restart the application.'
+                content: 'The OpenAI API key is not configured. Please add your API key to the .env.local file and restart the application.'
               }
             ]);
             setAuthError('API key is missing in the .env.local file');
@@ -91,7 +91,7 @@ export const ChatInterface = () => {
         {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: "I can't process your request because the OpenRouter API key is not configured. Please add your API key to the .env.local file and restart the application."
+          content: "I can't process your request because the OpenAI API key is not configured. Please add your API key to the .env.local file and restart the application."
         }
       ]);
       setInput('');

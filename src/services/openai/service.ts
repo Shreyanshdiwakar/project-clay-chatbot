@@ -5,28 +5,11 @@ import {
   ApiErrorResponse,
   ModelResponse
 } from './types';
+import { EDUCATIONAL_CONSULTANT_PROMPT } from './system-prompt';
 
 export function createSystemPrompt(pdfContent?: string | null, profileContext?: string | null): string {
-  let systemPrompt = `You are a friendly academic counselor helping high school students plan extracurricular activities to improve their college applications. Ask follow-up questions if needed.
-
-Format your responses with clean, readable Markdown:
-- Use **bold text** for section headings and important points
-- Use proper bullet points with - for lists
-- Use numbered lists with 1. 2. 3. for sequential steps
-- Structure your response with clear sections and spacing
-- Do not use hashtags or markdown headers with # symbols
-- Keep your formatting consistent and professional
-
-Example formatting structure:
-**Section Title**
-- First bullet point
-- Second bullet point with **emphasized** text
-- Third bullet point
-
-**Another Section**
-1. First step
-2. Second step
-3. Third step`;
+  // Use the educational consultant prompt as the base system prompt
+  let systemPrompt = EDUCATIONAL_CONSULTANT_PROMPT;
 
   if (profileContext) {
     systemPrompt += `\n\n**IMPORTANT - STUDENT PROFILE FROM QUESTIONNAIRE:**
@@ -42,11 +25,11 @@ Use the above student profile information to provide personalized advice specifi
       ? pdfContent.substring(0, maxPdfLength) + "... [PDF content truncated]"
       : pdfContent;
   
-    systemPrompt += `\n\n**IMPORTANT - STUDENT PROFILE FROM COMMON APP PDF:**
+    systemPrompt += `\n\n**IMPORTANT - STUDENT PROFILE FROM DOCUMENT:**
     
 ${truncatedPdf}
 
-Use the above Common App information to provide personalized advice specifically tailored to this student's background, interests, and accomplishments. Reference specific details from their profile when relevant.`;
+Use the above document information to provide personalized advice specifically tailored to this student's background, interests, and accomplishments. Reference specific details from their profile when relevant.`;
   }
 
   return systemPrompt;
@@ -74,16 +57,16 @@ function getMockResponse(userMessage: string): ModelResponse {
   };
 }
 
-export async function callOpenRouterAPI(
+export async function callOpenAIAPI(
   model: string, 
   userMessage: string, 
   pdfContent?: string | null,
   profileContext?: string | null
 ): Promise<ModelResponse> {
   try {
-    console.log(`Sending request to OpenRouter API using ${model}...`);
+    console.log(`Sending request to OpenAI API using ${model}...`);
     
-    const apiKey = env.OPENROUTER_API_KEY;
+    const apiKey = env.OPENAI_API_KEY;
     if (!apiKey || apiKey.length < 10) {
       console.log('API key not configured - using mock response for development');
       return getMockResponse(userMessage);
@@ -110,17 +93,15 @@ export async function callOpenRouterAPI(
     
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://openrouter.ai/',
-      'OpenRouter-Completions-Version': '2023-12-01'
+      'Authorization': `Bearer ${apiKey}`
     };
     
-    console.log('OpenRouter request headers:', JSON.stringify({
+    console.log('OpenAI request headers:', JSON.stringify({
       ...headers,
       'Authorization': 'Bearer ***'
     }));
     
-    console.log('OpenRouter request body:', JSON.stringify({
+    console.log('OpenAI request body:', JSON.stringify({
       ...requestBody,
       messages: [
         { role: 'system', content: '(system prompt, truncated for logs)' },
@@ -128,7 +109,7 @@ export async function callOpenRouterAPI(
       ]
     }, null, 2));
     
-    const response = await fetch(env.OPENROUTER_API_URL, {
+    const response = await fetch(env.OPENAI_API_URL, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
@@ -139,31 +120,22 @@ export async function callOpenRouterAPI(
       try {
         const errorJson = await response.json() as ApiErrorResponse;
         errorText = errorJson.error?.message || `Error ${response.status}: ${response.statusText}`;
-        
-        // Handle token limit errors specifically
-        if (errorText.includes('requires more credits') || 
-            response.status === 402) {
-          return {
-            success: false,
-            error: `API credit limit exceeded: ${errorText}`
-          };
-        }
       } catch {
         errorText = await response.text();
       }
       
-      console.error(`OpenRouter API error (${response.status}):`, errorText);
+      console.error(`OpenAI API error (${response.status}):`, errorText);
       return {
         success: false,
-        error: `OpenRouter API returned status ${response.status}: ${errorText.substring(0, 200)}${errorText.length > 200 ? '...' : ''}`
+        error: `OpenAI API returned status ${response.status}: ${errorText.substring(0, 200)}${errorText.length > 200 ? '...' : ''}`
       };
     }
     
     const responseData = await response.json() as ChatCompletionResponse;
-    console.log('OpenRouter API response:', JSON.stringify(responseData, null, 2));
+    console.log('OpenAI API response:', JSON.stringify(responseData, null, 2));
     
     if (!responseData.choices || responseData.choices.length === 0 || !responseData.choices[0].message) {
-      console.error('OpenRouter API returned an invalid response structure:', responseData);
+      console.error('OpenAI API returned an invalid response structure:', responseData);
       return {
         success: false,
         error: 'The API response format was invalid or empty.'
@@ -173,7 +145,7 @@ export async function callOpenRouterAPI(
     const content = responseData.choices[0].message.content.trim();
     
     if (!content) {
-      console.error('OpenRouter API returned an empty message content');
+      console.error('OpenAI API returned an empty message content');
       return {
         success: false,
         error: 'The API returned an empty message.'
@@ -199,34 +171,16 @@ export async function getModelResponse(
   profileContext?: string | null
 ): Promise<ModelResponse> {
   // For development without API key, use mock response
-  if (process.env.NODE_ENV === 'development' && (!env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY.length < 10)) {
+  if (env.NODE_ENV === 'development' && (!env.OPENAI_API_KEY || env.OPENAI_API_KEY.length < 10)) {
     return getMockResponse(userMessage);
   }
 
-  let response = await callOpenRouterAPI(env.PRIMARY_MODEL, userMessage, pdfContent, profileContext);
-  
-  // Check for auth errors or credit limit errors - use mock response
-  if (!response.success && response.error && 
-      (response.error.includes('requires more credits') || 
-       response.error.includes('No auth credentials') ||
-       response.error.includes('401'))) {
-    console.log(`API authentication or credit issue, falling back to mock response`);
-    return getMockResponse(userMessage);
-  }
+  let response = await callOpenAIAPI(env.PRIMARY_MODEL, userMessage, pdfContent, profileContext);
   
   if (!response.success && response.error) {
     console.log(`Primary model (${env.PRIMARY_MODEL}) failed with error: ${response.error}. Trying fallback model...`);
-    response = await callOpenRouterAPI(env.FALLBACK_MODEL, userMessage, pdfContent, profileContext);
-    
-    // If fallback also fails with auth or credit limit, use mock
-    if (!response.success && response.error && 
-        (response.error.includes('requires more credits') || 
-         response.error.includes('No auth credentials') ||
-         response.error.includes('401'))) {
-      console.log(`Fallback model has auth or credit issues, using mock response`);
-      return getMockResponse(userMessage);
-    }
+    response = await callOpenAIAPI(env.FALLBACK_MODEL, userMessage, pdfContent, profileContext);
   }
   
   return response;
-}
+} 

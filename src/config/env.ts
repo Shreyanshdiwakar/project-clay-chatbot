@@ -9,10 +9,12 @@
 // Define environment variable schema
 interface EnvConfig {
   // API Keys
+  OPENAI_API_KEY: string;
   OPENROUTER_API_KEY: string;
   TAVILY_API_KEY: string;
   
   // API URLs
+  OPENAI_API_URL: string;
   OPENROUTER_API_URL: string;
   
   // Model configuration
@@ -51,6 +53,19 @@ function getEnvVar(key: string, defaultValue?: string): string {
  */
 export const env: EnvConfig = {
   // API Keys with validation
+  get OPENAI_API_KEY(): string {
+    const key = 
+      getEnvVar('OPENAI_API_KEY') || 
+      getEnvVar('NEXT_PUBLIC_OPENAI_API_KEY') ||
+      getEnvVar('VERCEL_OPENAI_API_KEY');
+    
+    if (key && (key === 'your_openai_api_key_here' || key.length < 10)) {
+      console.error('Warning: OPENAI_API_KEY appears to be a placeholder or invalid');
+    }
+    
+    return key;
+  },
+
   get OPENROUTER_API_KEY(): string {
     const key = 
       getEnvVar('OPENROUTER_API_KEY') || 
@@ -79,11 +94,12 @@ export const env: EnvConfig = {
   },
   
   // API URLs
+  OPENAI_API_URL: getEnvVar('OPENAI_API_URL', 'https://api.openai.com/v1/chat/completions'),
   OPENROUTER_API_URL: getEnvVar('OPENROUTER_API_URL', 'https://openrouter.ai/api/v1/chat/completions'),
   
   // Model configuration
-  PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'deepseek/deepseek-chat'),
-  FALLBACK_MODEL: getEnvVar('FALLBACK_MODEL', 'openai/gpt-3.5-turbo'),
+  PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'gpt-4-turbo'),
+  FALLBACK_MODEL: getEnvVar('FALLBACK_MODEL', 'gpt-3.5-turbo'),
   
   // Node environment
   NODE_ENV: (getEnvVar('NODE_ENV', 'development') as EnvConfig['NODE_ENV']),
@@ -97,7 +113,7 @@ export const env: EnvConfig = {
  * Validate the API key format
  */
 export function isApiKeyConfigured(): boolean {
-  return Boolean(env.OPENROUTER_API_KEY && env.OPENROUTER_API_KEY.length > 10);
+  return Boolean(env.OPENAI_API_KEY && env.OPENAI_API_KEY.length > 10);
 }
 
 /**

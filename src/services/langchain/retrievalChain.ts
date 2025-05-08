@@ -17,16 +17,16 @@ export async function askQuestion(
   question: string,
   collectionName = "default", 
   apiKeys?: ApiKeys,
-  modelName = "openai/gpt-3.5-turbo"
+  modelName = "gpt-3.5-turbo"
 ) {
   try {
     // Set API key preference (passed in apiKeys object > env var)
-    const openRouterApiKey = 
-      apiKeys?.openrouterApiKey || 
-      env.OPENROUTER_API_KEY;
+    const openAiApiKey = 
+      apiKeys?.openaiApiKey || 
+      env.OPENAI_API_KEY;
     
-    if (!openRouterApiKey) {
-      throw new Error("OpenRouter API key is required for question answering");
+    if (!openAiApiKey) {
+      throw new Error("OpenAI API key is required for question answering");
     }
     
     // First, retrieve relevant documents from the vector store
@@ -55,14 +55,12 @@ QUESTION: ${question}
 
 ANSWER:`;
     
-    // Call the OpenRouter API directly
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    // Call the OpenAI API directly
+    const response = await fetch(env.OPENAI_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${openRouterApiKey}`,
-        "HTTP-Referer": "https://openrouter.ai/",
-        "X-Title": "Project Clay Chatbot"
+        "Authorization": `Bearer ${openAiApiKey}`
       },
       body: JSON.stringify({
         model: modelName,

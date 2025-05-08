@@ -1,5 +1,5 @@
 /**
- * OpenRouter API Type Definitions
+ * OpenAI API Type Definitions
  */
 
 // Model information
@@ -44,7 +44,6 @@ export interface ChatCompletionResponse {
   object: string;
   created: number;
   model: string;
-  provider?: string;
   choices: ChatChoice[];
   usage: {
     prompt_tokens: number;
@@ -58,7 +57,7 @@ export interface ApiErrorResponse {
   error: {
     message: string;
     type?: string;
-    code?: number;
+    code?: string;
   };
 }
 

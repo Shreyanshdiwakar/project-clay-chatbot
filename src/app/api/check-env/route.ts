@@ -5,12 +5,13 @@
  * without exposing the actual key values.
  */
 
-import { NextResponse } from 'next/server';
+// Updated for Next.js 15+
+import { NextResponse } from 'next/dist/server/web/spec-extension/response';
 import { isApiKeyConfigured, getEnvDiagnostics } from '@/config/env';
 
 export async function GET() {
   return NextResponse.json({
-    openrouterApiKey: isApiKeyConfigured() ? 'set' : 'missing',
+    openaiApiKey: isApiKeyConfigured() ? 'set' : 'missing',
     ...getEnvDiagnostics(),
   });
 } 

@@ -5,7 +5,8 @@
  * It accepts a question and returns an answer based on the documents in the vector store.
  */
 
-import { NextResponse } from 'next/server';
+// Updated for Next.js 15+
+import { NextResponse } from 'next/dist/server/web/spec-extension/response';
 import { askQuestion } from '@/services/langchain/retrievalChain';
 import { env } from '@/config/env';
 
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     const { 
       question, 
       collection = 'default', 
-      modelName = env.PRIMARY_MODEL || 'tng/deepseek-r1t-chimera',
+      modelName = env.PRIMARY_MODEL || 'gpt-3.5-turbo',
       tavily_api_key
     } = body;
     
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     console.log(`Processing question: "${question}" using collection: ${collection}`);
     
     const apiKeys = {
-      openrouterApiKey: env.OPENROUTER_API_KEY,
+      openaiApiKey: env.OPENAI_API_KEY,
       tavilyApiKey: tavily_api_key
     };
     

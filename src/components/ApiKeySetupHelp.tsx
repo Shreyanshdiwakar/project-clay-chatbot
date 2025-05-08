@@ -18,7 +18,7 @@ export const ApiKeySetupHelp = ({ error }: ApiKeySetupHelpProps) => {
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-          This chatbot needs an OpenRouter API key to function
+          This chatbot needs an OpenAI API key to function
         </p>
       </div>
       
@@ -39,12 +39,12 @@ export const ApiKeySetupHelp = ({ error }: ApiKeySetupHelpProps) => {
       
       <ol className="mb-6 pl-5 list-decimal space-y-3 text-zinc-600 dark:text-zinc-300">
         <li>
-          <span className="font-semibold">Sign up for OpenRouter</span>: 
-          Visit <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">openrouter.ai</a> and create an account if you don&apos;t have one.
+          <span className="font-semibold">Sign up for OpenAI</span>: 
+          Visit <a href="https://platform.openai.com/signup" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">platform.openai.com</a> and create an account if you don&apos;t have one.
         </li>
         <li>
           <span className="font-semibold">Get your API key</span>: 
-          Once logged in, go to your account settings to find or create an API key.
+          Once logged in, go to <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline dark:text-blue-400">API keys</a> section to create a new secret key.
         </li>
         <li>
           <span className="font-semibold">Create a .env.local file</span>: 
@@ -52,7 +52,7 @@ export const ApiKeySetupHelp = ({ error }: ApiKeySetupHelpProps) => {
         </li>
         <li>
           <span className="font-semibold">Add your API key</span>: 
-          In the .env.local file, add this line: <code className="bg-zinc-100 dark:bg-zinc-700 px-1 py-0.5 rounded text-sm">OPENROUTER_API_KEY=your_api_key_here</code>
+          In the .env.local file, add this line: <code className="bg-zinc-100 dark:bg-zinc-700 px-1 py-0.5 rounded text-sm">OPENAI_API_KEY=your_api_key_here</code>
         </li>
         <li>
           <span className="font-semibold">Restart the development server</span>: 

@@ -2,7 +2,7 @@
  * LangChain Embeddings Service
  * 
  * This module provides functions for generating embeddings using HuggingFace models,
- * with fallbacks to OpenAI embeddings via OpenRouter, or local embeddings if no API keys are available.
+ * with fallbacks to OpenAI embeddings, or local embeddings if no API keys are available.
  */
 
 import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
@@ -20,7 +20,7 @@ const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY ||
 
 /**
  * Get an embeddings instance for vector embeddings
- * With fallback chain: HuggingFace API -> OpenRouter -> Local embeddings
+ * With fallback chain: HuggingFace API -> OpenAI -> Local embeddings
  */
 export function getEmbeddings(modelName?: string): Embeddings {
   if (cachedEmbeddings) {
@@ -50,30 +50,24 @@ export function getEmbeddings(modelName?: string): Embeddings {
       console.warn('No HuggingFace API key provided. Trying fallback options.');
     }
     
-    // Fallback to OpenAI embeddings via OpenRouter if HuggingFace fails
-    if (env.OPENROUTER_API_KEY) {
+    // Fallback to OpenAI embeddings if HuggingFace fails
+    if (env.OPENAI_API_KEY) {
       try {
-        console.log('Attempting to use OpenAI embeddings via OpenRouter');
+        console.log('Attempting to use OpenAI embeddings');
         
         cachedEmbeddings = new OpenAIEmbeddings({
-          openAIApiKey: env.OPENROUTER_API_KEY,
-          configuration: {
-            baseURL: "https://openrouter.ai/api/v1",
-            defaultHeaders: {
-              "HTTP-Referer": "https://openrouter.ai/",
-              "X-Title": "Project Clay Chatbot"
-            }
-          }
+          openAIApiKey: env.OPENAI_API_KEY,
+          modelName: "text-embedding-ada-002" // OpenAI embedding model
         });
         
-        console.log('Successfully created OpenAI embeddings via OpenRouter');
+        console.log('Successfully created OpenAI embeddings');
         return cachedEmbeddings;
       } catch (openAiError) {
         console.warn(`Error with OpenAI embeddings: ${openAiError}`);
         // Continue to local fallback
       }
     } else {
-      console.warn('No OpenRouter API key provided. Trying local embeddings.');
+      console.warn('No OpenAI API key provided. Trying local embeddings.');
     }
     
     // Final fallback - use simple local embeddings implementation

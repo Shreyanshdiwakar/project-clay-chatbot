@@ -42,5 +42,5 @@ export interface RetrievalResult {
 
 export interface ApiKeys {
   tavilyApiKey?: string;
-  openrouterApiKey?: string;
+  openaiApiKey?: string;
 } 

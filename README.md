@@ -6,7 +6,7 @@ A full-stack AI chatbot built with Next.js and Tailwind CSS that helps high scho
 
 - Chat UI with message history (user and bot messages)
 - Responsive design with Tailwind CSS
-- Integration with OpenRouter API using DeepSeek Chat model
+- Integration with OpenAI API for language models
 - Loading spinner during API responses
 - Academic counselor persona to help students with extracurricular planning
 - Thinking process visualization that shows the AI's reasoning in real-time
@@ -21,7 +21,7 @@ A full-stack AI chatbot built with Next.js and Tailwind CSS that helps high scho
 - Next.js (React framework)
 - TypeScript
 - Tailwind CSS
-- OpenRouter API with DeepSeek Chat model
+- OpenAI API (GPT-3.5, GPT-4)
 - LangChain for document processing and retrieval
 - Chroma Vector Database for semantic search
 - HuggingFace embeddings for document vectorization
@@ -32,14 +32,14 @@ A full-stack AI chatbot built with Next.js and Tailwind CSS that helps high scho
 
 - Node.js 18.18.0 or higher
 - npm or yarn
-- OpenRouter API key (see below)
+- OpenAI API key (see below)
 - Tavily API key for web search (optional)
 
-### Getting an OpenRouter API Key
+### Getting an OpenAI API Key
 
-1. Sign up at [OpenRouter.ai](https://openrouter.ai)
-2. After signing up, go to the [API Keys section](https://openrouter.ai/keys)
-3. Create a new API key
+1. Sign up at [platform.openai.com](https://platform.openai.com/signup)
+2. After signing up, go to the [API Keys section](https://platform.openai.com/api-keys)
+3. Create a new secret key
 4. Copy the API key for use in the next steps
 
 ### Getting a Tavily API Key (Optional)
@@ -63,18 +63,18 @@ npm install
 yarn
 ```
 
-3. Set up your OpenRouter API key using one of these methods:
+3. Set up your OpenAI API key using one of these methods:
 
 #### Method 1: Using the setup script (Recommended)
 ```bash
 node setup-env.js YOUR_API_KEY
 ```
-Replace `YOUR_API_KEY` with your actual OpenRouter API key.
+Replace `YOUR_API_KEY` with your actual OpenAI API key.
 
 #### Method 2: Manual setup
-Create a `.env.local` file in the root directory with your OpenRouter API key:
+Create a `.env.local` file in the root directory with your OpenAI API key:
 ```
-OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
 TAVILY_API_KEY=your_tavily_api_key_here  # Optional
 ```
 
@@ -126,10 +126,10 @@ This makes the interaction more engaging and provides transparency into the AI's
 
 If you encounter the "No auth credentials found" error:
 
-1. Check that your `.env.local` file exists and contains your OpenRouter API key
+1. Check that your `.env.local` file exists and contains your OpenAI API key
 2. Make sure the API key is valid and formatted correctly (no quotes or spaces)
 3. Ensure you've restarted the development server after adding the API key
-4. Verify that your OpenRouter API key is valid and has sufficient credits
+4. Verify that your OpenAI API key is valid and has sufficient credits
 
 The application includes a built-in API key setup guide that will appear in the chat interface if authentication issues are detected.
 
@@ -137,7 +137,7 @@ The application includes a built-in API key setup guide that will appear in the 
 
 If you see authentication errors:
 
-1. Verify your API key on the [OpenRouter dashboard](https://openrouter.ai/keys)
+1. Verify your API key on the [OpenAI dashboard](https://platform.openai.com/api-keys)
 2. Run the setup script with your valid API key:
    ```bash
    node setup-env.js YOUR_VALID_API_KEY
@@ -147,11 +147,11 @@ If you see authentication errors:
 
 ## Model Information
 
-This project uses the DeepSeek Chat model from OpenRouter API. DeepSeek Chat is a powerful large language model designed to provide human-like responses with strong reasoning capabilities.
+This project uses OpenAI's language models. By default, it's configured to use GPT-3.5 Turbo, but you can also configure it to use GPT-4 or other OpenAI models.
 
-If DeepSeek Chat is unavailable, the application will automatically fall back to using GPT-3.5-Turbo.
+If the primary model is unavailable, the application will automatically fall back to using a different model specified in your environment configuration.
 
-To use a different model from OpenRouter, you can modify the `PRIMARY_MODEL` constant in the environment configuration.
+To use a different model from OpenAI, you can modify the `PRIMARY_MODEL` constant in the environment configuration.
 
 ## Directory Structure
 

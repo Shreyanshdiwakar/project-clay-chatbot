@@ -1,7 +1,7 @@
 /**
  * Chat API endpoint for ProjectClay chatbot
  * 
- * This endpoint uses the OpenRouter API to connect to language models.
+ * This endpoint uses the OpenAI API to connect to language models.
  * 
  * It follows best practices for API route implementation:
  * - Proper TypeScript typing
@@ -10,10 +10,11 @@
  * - Separation of concerns with services
  */
 
-import { NextResponse } from 'next/server';
+// Updated for Next.js 15+
+import { NextResponse } from 'next/dist/server/web/spec-extension/response';
 import { ChatRequest, ChatResponse, ApiErrorResponse } from '@/types/api';
 import { isApiKeyConfigured, getEnvDiagnostics, env } from '@/config/env';
-import { getModelResponse, generateThinkingSteps, MODEL_INFO } from '@/services/openrouter';
+import { getModelResponse, generateThinkingSteps, MODEL_INFO } from '@/services/openai';
 
 /**
  * POST handler for chat API
@@ -38,11 +39,11 @@ export async function POST(request: Request): Promise<NextResponse<ChatResponse 
     }
 
     // Check API key configuration - in development mode, we'll continue even without an API key
-    if (!isApiKeyConfigured() && process.env.NODE_ENV !== 'development') {
-      console.error('Error: OpenRouter API key is not configured');
+    if (!isApiKeyConfigured() && env.NODE_ENV !== 'development') {
+      console.error('Error: OpenAI API key is not configured');
       return NextResponse.json(
         { 
-          error: 'OpenRouter API key is not configured. Please add OPENROUTER_API_KEY to your environment variables.',
+          error: 'OpenAI API key is not configured. Please add OPENAI_API_KEY to your environment variables.',
           ...getEnvDiagnostics()
         },
         { status: 500 }

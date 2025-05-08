@@ -51,7 +51,7 @@ export default function RootLayout({
         {/* Apple Touch Icon for iOS devices */}
         <link rel="apple-touch-icon" href="/projectclay.jpg" sizes="180x180" />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-full bg-black text-white`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-full bg-black text-white`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
