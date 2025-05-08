@@ -13,7 +13,8 @@ import { LangChainFileUpload } from '@/components/LangChainFileUpload';
 import { LangChainQuery } from '@/components/LangChainQuery';
 import { KnowledgeBaseManager } from '@/components/KnowledgeBaseManager';
 import { StudentQuestionnaire, StudentProfile } from '@/components/StudentQuestionnaire';
-import { generateRecommendations, RecommendationResponse } from '@/services/recommendations';
+import { generateRecommendations } from '@/services/recommendations';
+import { RecommendationResponse } from '@/services/recommendations/legacy';
 import { AlertCircle, BookOpen, Award, Calendar, Trophy } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -42,26 +43,10 @@ export default function Home() {
 
   // Check for existing profile in local storage on component mount
   useEffect(() => {
-    const savedProfile = localStorage.getItem('studentProfile');
-    if (savedProfile) {
-      try {
-        const parsedProfile = JSON.parse(savedProfile);
-        setStudentProfile(parsedProfile);
-
-        // Also check for saved recommendations
-        const savedRecommendations = localStorage.getItem('recommendations');
-        if (savedRecommendations) {
-          setRecommendations(JSON.parse(savedRecommendations));
-        }
-      } catch (e) {
-        console.error('Error parsing saved profile:', e);
-      }
-    } else {
-      // Show questionnaire for new users after a short delay
-      setTimeout(() => {
-        setShowQuestionnaire(true);
-      }, 1000);
-    }
+    // Show questionnaire for new users
+    setTimeout(() => {
+      setShowQuestionnaire(true);
+    }, 1000);
   }, []);
 
   const handleSendMessage = async (content: string, files?: File[]) => {
@@ -255,8 +240,7 @@ export default function Home() {
   const handleProfileComplete = async (profile: StudentProfile) => {
     setStudentProfile(profile);
     setShowQuestionnaire(false);
-    localStorage.setItem('studentProfile', JSON.stringify(profile));
-
+    
     // Generate welcome message based on the profile
     const welcomeMessage: Message = {
       id: Date.now().toString(),
@@ -271,8 +255,7 @@ export default function Home() {
     try {
       const recs = await generateRecommendations(profile);
       setRecommendations(recs);
-      localStorage.setItem('recommendations', JSON.stringify(recs));
-
+      
       // Add a message about the recommendations
       const recsMessage: Message = {
         id: Date.now().toString(),
