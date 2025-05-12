@@ -9,6 +9,25 @@ import { StudentProfile } from '@/components/StudentQuestionnaire';
 import { selectTemplates, RecommendationTemplate } from './templates';
 import { RecommendationResponse } from '@/services/recommendations';
 
+/**
+ * Detailed recommendation for activities with metadata
+ */
+interface ExternalActivityRecommendation {
+  name: string;
+  description: string;
+  relevance: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  timeCommitment: string;
+  skillsDeveloped: string[];
+}
+
+/**
+ * Enhanced recommendation response with AI-recommended activities
+ */
+interface EnhancedRecommendationResponse extends RecommendationResponse {
+  recommendedActivities: ExternalActivityRecommendation[];
+}
+
 interface TemplateVariable {
   name: string;
   prompt: string;
@@ -526,6 +545,19 @@ function generateGradeSpecificInsights(gradeCategory: string, major: string): st
     case 'junior':
       insights += "Junior year is critical for college applications. Focus on maintaining strong grades in challenging courses, particularly in " + (major !== "undecided major" ? `subjects related to ${major}` : "your areas of interest") + ". Prepare thoroughly for standardized tests, aiming to complete them by early senior year. Take leadership positions in your key activities and begin researching colleges that match your academic profile and interests.";
       break;
+    case 'senior':
+      insights += "Senior year is focused on finalizing and submitting college applications while maintaining strong academic performance. For " + (major !== "undecided major" ? `students interested in ${major}` : "all students") + ", it's important to stay engaged in meaningful activities while avoiding senioritis. Use this time to visit colleges, make thoughtful decisions about where to attend, and prepare for the transition to college life.";
+      break;
+    default:
+      insights += "Focus on maintaining strong academic performance while pursuing activities that align with your interests and goals. Use this time to explore potential majors and career paths through hands-on experiences and research.";
+  }
+  
+  return insights;
+}
+
+/**
+ * Fill template content with personalized variable values
+ */
 async function fillTemplate(
   template: RecommendationTemplate, 
   profile: StudentProfile
@@ -546,11 +578,203 @@ async function fillTemplate(
 }
 
 /**
+ * Get activity recommendations from external sources/APIs
+ */
+async function getExternalActivityRecommendations(
+  profile: StudentProfile
+): Promise<ExternalActivityRecommendation[]> {
+  try {
+    // In a production environment, this would make an API call to a service
+    // that can search and recommend activities based on the profile
+    const prompt = `
+      Student Profile:
+      - Grade: ${profile.gradeLevel}
+      - Intended Major: ${profile.intendedMajor}
+      - Current Activities: ${profile.currentActivities}
+      - Interested In: ${profile.interestedActivities}
+      
+      Please recommend specific activities, programs, or opportunities that would:
+      1. Align with their academic interests
+      2. Build relevant skills for their intended major
+      3. Stand out on college applications
+      4. Be appropriate for their grade level
+      5. Complement their existing activities
+    `;
+
+    // This would be replaced with actual API call in production
+    // For example:
+    // const response = await fetch('/api/external-recommendations', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ prompt, profile })
+    // });
+    // const data = await response.json();
+    // return data.recommendations;
+
+    // For now, return structured mock data based on the profile
+    return generateMockActivityRecommendations(profile);
+  } catch (error) {
+    console.error('Error getting external activity recommendations:', error);
+    return [];
+  }
+}
+
+/**
+ * Generate mock activity recommendations based on student profile
+ */
+function generateMockActivityRecommendations(
+  profile: StudentProfile
+): ExternalActivityRecommendation[] {
+  const major = (profile.intendedMajor || "undecided").toLowerCase();
+  const grade = (profile.gradeLevel || "").toLowerCase();
+  
+  // Base recommendations that are good for any student
+  const baseRecommendations: ExternalActivityRecommendation[] = [
+    {
+      name: "Community Service Leadership Program",
+      description: "Lead and organize community service projects that address local needs.",
+      relevance: "Develops leadership and project management skills valued by colleges.",
+      difficulty: "intermediate",
+      timeCommitment: "5-10 hours per month",
+      skillsDeveloped: ["Leadership", "Project Management", "Community Engagement"]
+    }
+  ];
+
+  // Add major-specific recommendations
+  if (major.includes('comput') || major.includes('tech') || major.includes('engineer')) {
+    baseRecommendations.push({
+      name: "Local Tech Meetup Groups",
+      description: "Join and participate in local technology meetups and coding groups.",
+      relevance: "Direct exposure to tech community and current trends.",
+      difficulty: "beginner",
+      timeCommitment: "4-6 hours per month",
+      skillsDeveloped: ["Networking", "Technical Knowledge", "Communication"]
+    });
+    
+    baseRecommendations.push({
+      name: "Personal Coding Project",
+      description: "Develop an app or website that solves a real problem in your community.",
+      relevance: "Demonstrates practical application of technical skills.",
+      difficulty: "advanced",
+      timeCommitment: "10-15 hours per month",
+      skillsDeveloped: ["Programming", "Problem Solving", "User Experience Design"]
+    });
+  } else if (major.includes('business') || major.includes('econ')) {
+    baseRecommendations.push({
+      name: "Student Enterprise Program",
+      description: "Start and run a small business or social enterprise at school.",
+      relevance: "Hands-on business experience shows entrepreneurial initiative.",
+      difficulty: "advanced",
+      timeCommitment: "10-15 hours per month",
+      skillsDeveloped: ["Entrepreneurship", "Financial Management", "Marketing"]
+    });
+    
+    baseRecommendations.push({
+      name: "Business Case Competition",
+      description: "Form a team to participate in business case analysis competitions.",
+      relevance: "Develops analytical thinking and presentation skills.",
+      difficulty: "intermediate",
+      timeCommitment: "Varies by competition cycle",
+      skillsDeveloped: ["Strategic Analysis", "Teamwork", "Presentation Skills"]
+    });
+  } else if (major.includes('art') || major.includes('music') || major.includes('drama')) {
+    baseRecommendations.push({
+      name: "Portfolio Development Workshop",
+      description: "Join workshops focused on creating professional artistic portfolios.",
+      relevance: "Essential for applications to arts programs.",
+      difficulty: "intermediate",
+      timeCommitment: "8-12 hours per month",
+      skillsDeveloped: ["Portfolio Curation", "Artistic Critique", "Professional Presentation"]
+    });
+    
+    baseRecommendations.push({
+      name: "Community Arts Initiative",
+      description: "Create or participate in arts programs for underserved communities.",
+      relevance: "Demonstrates social impact through artistic expression.",
+      difficulty: "intermediate",
+      timeCommitment: "6-10 hours per month",
+      skillsDeveloped: ["Community Engagement", "Project Management", "Artistic Expression"]
+    });
+  } else if (major.includes('science') || major.includes('bio') || major.includes('chem')) {
+    baseRecommendations.push({
+      name: "Independent Research Project",
+      description: "Design and conduct a research project with teacher mentorship.",
+      relevance: "Demonstrates scientific thinking and research skills.",
+      difficulty: "advanced",
+      timeCommitment: "8-12 hours per month",
+      skillsDeveloped: ["Research Methods", "Data Analysis", "Scientific Writing"]
+    });
+    
+    baseRecommendations.push({
+      name: "Science Communication Initiative",
+      description: "Create content explaining scientific concepts to the general public.",
+      relevance: "Shows ability to communicate complex ideas clearly.",
+      difficulty: "intermediate",
+      timeCommitment: "4-8 hours per month",
+      skillsDeveloped: ["Communication", "Content Creation", "Simplifying Complex Concepts"]
+    });
+  }
+
+  // Add grade-specific recommendations
+  if (grade.includes('fresh') || grade.includes('9')) {
+    baseRecommendations.push({
+      name: "Exploration Academy",
+      description: "Join a program designed to help freshmen explore different academic and career interests.",
+      relevance: "Helps identify interests and potential majors early.",
+      difficulty: "beginner",
+      timeCommitment: "2-4 hours per week",
+      skillsDeveloped: ["Self-awareness", "Academic Exploration", "Goal Setting"]
+    });
+  } else if (grade.includes('soph') || grade.includes('10')) {
+    baseRecommendations.push({
+      name: "Mentorship Connection Program",
+      description: "Connect with upperclassmen or professionals in fields of interest.",
+      relevance: "Provides guidance and insight into potential career paths.",
+      difficulty: "beginner",
+      timeCommitment: "2-3 hours per month",
+      skillsDeveloped: ["Networking", "Career Exploration", "Communication"]
+    });
+  } else if (grade.includes('jun') || grade.includes('11')) {
+    baseRecommendations.push({
+      name: "Research Assistant Program",
+      description: "Assist in university research projects during summer.",
+      relevance: "Gain research experience and academic exposure at the college level.",
+      difficulty: "advanced",
+      timeCommitment: "20-30 hours per week (summer)",
+      skillsDeveloped: ["Research Methods", "Academic Writing", "Data Analysis"]
+    });
+  } else if (grade.includes('sen') || grade.includes('12')) {
+    baseRecommendations.push({
+      name: "Capstone Project",
+      description: "Create a culminating project that showcases your skills and interests.",
+      relevance: "Demonstrates the culmination of your high school learning and experiences.",
+      difficulty: "advanced",
+      timeCommitment: "10-15 hours per month",
+      skillsDeveloped: ["Project Management", "Presentation", "Subject Expertise"]
+    });
+  }
+
+  // If there are no major-specific recommendations, add general ones
+  if (baseRecommendations.length < 3) {
+    baseRecommendations.push({
+      name: "Leadership Development Program",
+      description: "Participate in workshops and activities designed to build leadership capabilities.",
+      relevance: "Leadership skills are valued across all fields and majors.",
+      difficulty: "intermediate",
+      timeCommitment: "4-6 hours per month",
+      skillsDeveloped: ["Leadership", "Communication", "Problem-solving"]
+    });
+  }
+
+  return baseRecommendations;
+}
+
+/**
  * Generate hybrid recommendations combining templates with AI personalization
  */
 export async function generateHybridRecommendations(
   profile: StudentProfile
-): Promise<RecommendationResponse> {
+): Promise<EnhancedRecommendationResponse> {
   try {
     // Select the appropriate templates based on the student profile
     const templates = selectTemplates(profile);
@@ -587,12 +811,16 @@ export async function generateHybridRecommendations(
     // Generate competition suggestions based on profile and major
     const competitions = generateCompetitionSuggestions(profile.intendedMajor);
     
+    // Get external activity recommendations
+    const recommendedActivities = await getExternalActivityRecommendations(profile);
+    
     return {
       suggestedProjects: projectLines,
       suggestedCompetitions: competitions,
       suggestedSkills: skillLines,
       timeline: timeline,
-      profileAnalysis: profileAnalysis
+      profileAnalysis: profileAnalysis,
+      recommendedActivities: recommendedActivities
     };
   } catch (error) {
     console.error('Error generating hybrid recommendations:', error);
@@ -618,7 +846,8 @@ export async function generateHybridRecommendations(
         'Develop and submit strong applications',
         'Make your final college decision'
       ],
-      profileAnalysis: `Based on your interest in ${profile.intendedMajor || "your field of interest"}, focus on developing expertise while exploring opportunities that showcase your initiative and passion.`
+      profileAnalysis: `Based on your interest in ${profile.intendedMajor || "your field of interest"}, focus on developing expertise while exploring opportunities that showcase your initiative and passion.`,
+      recommendedActivities: []
     };
   }
 }
