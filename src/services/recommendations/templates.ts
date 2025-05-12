@@ -166,7 +166,7 @@ export const TIMELINE_TEMPLATES: TemplateMap = {
 **January**
    - Meet with counselor to discuss junior year course selection
    - {{midYearCourseAdjustments}}
-   - Review PSAT results and identify areas for improvement
+   - Review PSAT results
    - Create a target list of safety, match, and reach colleges
    - Begin researching scholarship opportunities for your specific interests
 
