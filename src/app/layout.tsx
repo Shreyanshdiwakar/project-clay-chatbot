@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Figtree } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from 'sonner';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const figtree = Figtree({
   subsets: ["latin"],
   display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
+  variable: "--font-sans",
 });
 
 export const metadata: Metadata = {
@@ -51,7 +45,7 @@ export default function RootLayout({
         {/* Apple Touch Icon for iOS devices */}
         <link rel="apple-touch-icon" href="/projectclay.jpg" sizes="180x180" />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-full bg-black text-white`} suppressHydrationWarning>
+      <body className={`${figtree.variable} antialiased h-full bg-black text-white`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

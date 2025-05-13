@@ -6,9 +6,9 @@
  * to generate an answer.
  */
 
-import { env } from "../../config/env.js";
-import { queryVectorStore } from "./vectorStore.js";
-import { getModelResponse } from "../openai/service.js";
+import { env } from "../../config/env";
+import { queryVectorStore } from "./vectorStore";
+import { getModelResponse } from "../openai/service";
 
 /**
  * API keys for different services
