@@ -9,7 +9,17 @@ export * from './documentLoaders';
 export * from './vectorStore';
 export * from './embeddings';
 export * from './retrievalChain';
-export * from './types';
+// Export specific types to avoid naming conflicts
+export { DocumentType } from './types';
+export type {
+  DocumentProcessResult,
+  VectorStoreConfig,
+  QueryResult,
+  RetrievalResult,
+  WebSearchResult,
+  QuestionAnswerResult,
+  ApiKeys
+} from './types';
 
 // Re-export the most commonly used functions
 import { processDocument } from './documentLoaders';

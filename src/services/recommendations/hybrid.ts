@@ -7,7 +7,7 @@
 
 import { StudentProfile } from '@/components/StudentQuestionnaire';
 import { selectTemplates, RecommendationTemplate } from './templates';
-import { RecommendationResponse } from '@/services/recommendations';
+import { RecommendationResponse, EnhancedRecommendationResponse } from './types';
 
 /**
  * Detailed recommendation for activities with metadata
@@ -24,9 +24,8 @@ interface ExternalActivityRecommendation {
 /**
  * Enhanced recommendation response with AI-recommended activities
  */
-interface EnhancedRecommendationResponse extends RecommendationResponse {
-  recommendedActivities: ExternalActivityRecommendation[];
-}
+// Use the ExternalActivityRecommendation type for strongly-typed recommendations
+// The EnhancedRecommendationResponse is now imported from types.ts
 
 interface TemplateVariable {
   name: string;
@@ -578,44 +577,100 @@ async function fillTemplate(
 }
 
 /**
- * Get activity recommendations from external sources/APIs
+ * Make a request to the server-side API endpoint for AI-generated content
+ */
+async function makeServerSideRequest(message: string): Promise<string> {
+  try {
+    // Construct the absolute URL for the API endpoint
+    const apiUrl = typeof window !== 'undefined' 
+      ? `${window.location.origin}/api/chat` 
+      : process.env.NEXT_PUBLIC_API_BASE_URL 
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/chat`
+        : '/api/chat'; // Fallback to relative URL
+    
+    console.log(`Making API request to: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Server responded with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.message;
+  } catch (error) {
+    console.error('Error making server-side request:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get activity recommendations using the server-side API endpoint
  */
 async function getExternalActivityRecommendations(
   profile: StudentProfile
 ): Promise<ExternalActivityRecommendation[]> {
   try {
-    // In a production environment, this would make an API call to a service
-    // that can search and recommend activities based on the profile
     const prompt = `
-      Student Profile:
+      Given this student profile:
       - Grade: ${profile.gradeLevel}
       - Intended Major: ${profile.intendedMajor}
       - Current Activities: ${profile.currentActivities}
       - Interested In: ${profile.interestedActivities}
       
-      Please recommend specific activities, programs, or opportunities that would:
-      1. Align with their academic interests
-      2. Build relevant skills for their intended major
-      3. Stand out on college applications
-      4. Be appropriate for their grade level
-      5. Complement their existing activities
+      Search and recommend 3-5 specific, current, and relevant activities, programs, or opportunities that    
+      Format each recommendation as a structured JSON object with:
+      - name: string
+      - description: string
+      - relevance: string
+      - difficulty: "beginner" | "intermediate" | "advanced"
+      - timeCommitment: string
+      - skillsDeveloped: string[]
+      
+      Return a JSON object with a 'recommendations' array containing these activity objects.
+      Include specific, real programs where possible, with current information.
     `;
 
-    // This would be replaced with actual API call in production
-    // For example:
-    // const response = await fetch('/api/external-recommendations', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ prompt, profile })
-    // });
-    // const data = await response.json();
-    // return data.recommendations;
-
-    // For now, return structured mock data based on the profile
-    return generateMockActivityRecommendations(profile);
+    try {
+      // Make a request to the server-side API
+      const responseContent = await makeServerSideRequest(prompt);
+      
+      // Parse the JSON response
+      // The API response might be in markdown format, so we try to extract JSON from it
+      const jsonMatch = responseContent.match(/```json\n([\s\S]*)\n```/) || 
+                        responseContent.match(/\{[\s\S]*\}/);
+                        
+      const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : responseContent;
+      
+      const parsedResponse = JSON.parse(jsonString);
+      
+      if (Array.isArray(parsedResponse.recommendations)) {
+        return parsedResponse.recommendations.map(rec => ({
+          name: rec.name || 'Recommended Activity',
+          description: rec.description || 'No description provided',
+          relevance: rec.relevance || 'Aligns with your interests and goals',
+          difficulty: rec.difficulty || 'intermediate',
+          timeCommitment: rec.timeCommitment || 'Varies',
+          skillsDeveloped: rec.skillsDeveloped || ['Leadership', 'Project Management']
+        }));
+      }
+      throw new Error('Invalid response format from API');
+    } catch (parseError) {
+      console.error('Error parsing API response:', parseError);
+      return generateMockActivityRecommendations(profile);
+    }
   } catch (error) {
     console.error('Error getting external activity recommendations:', error);
-    return [];
+    return generateMockActivityRecommendations(profile);
   }
 }
 

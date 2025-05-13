@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<NextResponse<ChatResponse 
     const body = await request.json() as ChatRequest;
     console.log('Request body:', body);
     
-    const { message, pdfContent, profileContext } = body;
+    const { message, pdfContent, profileContext, isWebSearch } = body;
 
     // Validate required fields
     if (!message) {
@@ -53,8 +53,37 @@ export async function POST(request: Request): Promise<NextResponse<ChatResponse 
     // Generate thinking steps for the response
     const thinkingSteps = generateThinkingSteps(message, pdfContent, profileContext);
 
-    // Get model response
-    const modelResponse = await getModelResponse(message, pdfContent, profileContext);
+    // Get model response with web search if requested
+    const useWebSearch = isWebSearch === true;
+    console.log(`Processing request with web search: ${useWebSearch ? 'enabled' : 'disabled'}`);
+    
+    // Define test query for web search verification
+    const isTestMode = message === "TEST_WEB_SEARCH";
+    let testQuery = null;
+    
+    if (isTestMode) {
+      testQuery = "What are the current top universities for computer science in 2024?";
+      console.log("=== RUNNING WEB SEARCH TEST ===");
+      console.log(`Test query: "${testQuery}"`);
+    }
+    
+    // Use test query if in test mode, otherwise use the user's message
+    const queryToUse = isTestMode ? testQuery : message;
+    const modelResponse = await getModelResponse(queryToUse, pdfContent, profileContext, useWebSearch);
+    
+    // Log detailed response for test mode
+    if (isTestMode) {
+      console.log('Web search test results:', {
+        success: modelResponse.success,
+        webSearchAttempted: modelResponse.webSearchAttempted,
+        hasContent: !!modelResponse.content,
+        contentLength: modelResponse.content?.length || 0,
+        webSearchResults: modelResponse.webSearchResults?.length || 0,
+        toolCallsMade: modelResponse.toolCallsMade,
+        model: modelResponse.model
+      });
+      console.log("=== WEB SEARCH TEST COMPLETE ===");
+    }
     
     // Handle unsuccessful response
     if (!modelResponse.success) {
@@ -71,13 +100,24 @@ export async function POST(request: Request): Promise<NextResponse<ChatResponse 
     const modelInfo = MODEL_INFO[modelId];
     
     // Return successful response
-    return NextResponse.json({
+    // Prepare response object
+    const response: ChatResponse = {
       message: modelResponse.content!,
       model: {
         ...modelInfo
       },
       thinking: thinkingSteps
-    });
+    };
+    
+    // Add web search results if available
+    if (useWebSearch) {
+      response.webSearchAttempted = modelResponse.webSearchAttempted;
+      if (modelResponse.webSearchResults && modelResponse.webSearchResults.length > 0) {
+        response.webSearchResults = modelResponse.webSearchResults;
+      }
+    }
+    
+    return NextResponse.json(response);
   } catch (error) {
     console.error('API error:', error);
     return NextResponse.json(

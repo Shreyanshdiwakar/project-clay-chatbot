@@ -17,6 +17,7 @@ export const ChatInterface = () => {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const [apiKeyConfigured, setApiKeyConfigured] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [showThinking, setShowThinking] = useState(false);
@@ -75,6 +76,11 @@ export const ChatInterface = () => {
     inputRef.current?.focus();
   }, []);
 
+  const toggleSearchMode = () => {
+    setIsSearchMode(prev => !prev);
+    inputRef.current?.focus();
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
@@ -126,10 +132,11 @@ export const ChatInterface = () => {
 
       const startTime = Date.now();
       
-
-      console.log('Sending message to API:', input);
+      // Set the appropriate API endpoint based on search mode
+      const endpoint = isSearchMode ? '/api/websearch' : '/api/chat';
+      console.log(`Sending message to ${isSearchMode ? 'Web Search' : 'Chat'} API:`, input);
       
-      const response = await fetch('/api/chat', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -234,21 +241,53 @@ export const ChatInterface = () => {
               placeholder="Type your message..."
               disabled={loading}
               rows={1}
-              className="w-full border border-zinc-300 dark:border-zinc-600 rounded-lg py-3 px-4 pr-16 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-zinc-700 dark:text-white"
+              className={`w-full border-2 rounded-lg py-3 px-4 pr-36 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-zinc-700 dark:text-white transition-colors ${
+                isSearchMode 
+                  ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' 
+                  : 'border-zinc-300 dark:border-zinc-600'
+              }`}
             />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="absolute right-2 bottom-2 bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Send message"
-            >
+            <div className="absolute right-2 bottom-2 flex space-x-2">
+              <button
+                type="button"
+                onClick={toggleSearchMode}
+                disabled={loading}
+                className={`flex items-center text-white py-2 px-3 rounded-lg shadow-md transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${
+                  isSearchMode 
+                    ? 'bg-indigo-600 hover:bg-indigo-700 ring-2 ring-indigo-400 ring-opacity-50' 
+                    : 'bg-blue-500 hover:bg-blue-600'
+                }`}
+                aria-label={`${isSearchMode ? 'Disable' : 'Enable'} web search`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-1">
+                  <path fillRule="evenodd" d="M10.5 3.75a6.75 6.75 0 100 13.5 6.75 6.75 0 000-13.5zM2.25 10.5a8.25 8.25 0 1114.59 5.28l4.69 4.69a.75.75 0 11-1.06 1.06l-4.69-4.69A8.25 8.25 0 012.25 10.5z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-medium">
+                  {isSearchMode ? 'Web' : 'Search'}
+                </span>
+              </button>
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Send message"
+              >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                 <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
               </svg>
-            </button>
+              </button>
+            </div>
           </div>
           <div className="text-xs text-zinc-500 dark:text-zinc-400 flex justify-between">
-            <span>Press <kbd className="bg-zinc-100 dark:bg-zinc-700 px-1 rounded">Ctrl</kbd>+<kbd className="bg-zinc-100 dark:bg-zinc-700 px-1 rounded">Enter</kbd> to send</span>
+            <div className="flex items-center space-x-2">
+              <span>Press <kbd className="bg-zinc-100 dark:bg-zinc-700 px-1 rounded">Ctrl</kbd>+<kbd className="bg-zinc-100 dark:bg-zinc-700 px-1 rounded">Enter</kbd> to send</span>
+              {isSearchMode && (
+                <div className="flex items-center">
+                  <span className="inline-block h-2 w-2 rounded-full bg-indigo-500 animate-pulse mr-1.5"></span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-semibold">Web Search Mode Active</span>
+                </div>
+              )}
+            </div>
             {loading && (
               <span>
                 {showThinking ? `${modelInfo?.name || 'DeepSeek r1'} is thinking...` : "Loading..."}

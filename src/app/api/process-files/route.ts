@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 import { PdfReader } from 'pdfreader';
 import Tesseract from 'tesseract.js';
 
+// Interface for PdfReader item
+interface PDFItem {
+  page?: number;
+  text?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  file?: {
+    path?: string;
+    buffer?: string;
+  };
+}
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
@@ -65,7 +79,7 @@ async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
     const pageTexts: Record<number, { text: string; x: number; y: number }[]> = {};
     let currentPage = 0;
-    new PdfReader().parseBuffer(buffer, (err, item) => {
+    new PdfReader().parseBuffer(buffer, (err, item: PDFItem | null) => {
       if (err) {
         reject(err);
         return;
@@ -113,7 +127,7 @@ async function extractTextFromPdf(buffer: Buffer): Promise<string> {
         resolve(allText.trim() || '');
         return;
       }
-      if (item.page) {
+      if (item.page !== undefined) {
         currentPage = item.page;
         pageTexts[currentPage] = pageTexts[currentPage] || [];
       }

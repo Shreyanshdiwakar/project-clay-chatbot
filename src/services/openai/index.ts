@@ -24,6 +24,14 @@ export const MODEL_INFO: Record<string, ModelInfo> = {
     developer: 'OpenAI',
     parameters: '200 billion'
   },
+  'gpt-4-0125-preview': {
+    id: 'gpt-4-0125-preview',
+    name: 'GPT-4 Turbo (Preview)',
+    description: 'A powerful large language model with strong reasoning and browsing capabilities',
+    features: ['Reasoning', 'Planning', 'Web Browsing', 'Problem-solving'],
+    developer: 'OpenAI',
+    parameters: '100 billion'
+  },
   'gpt-4-turbo': {
     id: 'gpt-4-turbo',
     name: 'GPT-4 Turbo',

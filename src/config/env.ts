@@ -2,24 +2,24 @@
  * Environment Configuration
  * 
  * This module centralizes all environment variable access and validation.
- * It ensures all required variables are present and validates their format
- * at application startup time rather than during API requests.
+ * It ensures all required variables are present and provides graceful fallbacks
+ * in development mode. This is compatible with Next.js Edge Runtime.
  */
 
 // Define environment variable schema
-interface EnvConfig {
+export interface EnvConfig {
   // API Keys
   OPENAI_API_KEY: string;
-  OPENROUTER_API_KEY: string;
-  TAVILY_API_KEY: string;
+// TAVILY_API_KEY removed
   
   // API URLs
   OPENAI_API_URL: string;
-  OPENROUTER_API_URL: string;
   
   // Model configuration
   PRIMARY_MODEL: string;
   FALLBACK_MODEL: string;
+  WEB_SEARCH_ENABLED: boolean;
+  WEB_BROWSING_MODEL: string;
   
   // Node environment
   NODE_ENV: 'development' | 'production' | 'test';
@@ -29,95 +29,127 @@ interface EnvConfig {
   VERCEL_ENV?: string;
 }
 
-/**
- * Gets an environment variable with validation
- */
-function getEnvVar(key: string, defaultValue?: string): string {
-  const value = process.env[key] || defaultValue;
-  
-  if (!value) {
-    // In development, log a warning but continue
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`Warning: Environment variable ${key} is not set`);
-      return '';
-    }
-    // In production, throw an error for missing required variables
-    throw new Error(`Environment variable ${key} is not set`);
+// Determine environment early to use in subsequent logic
+const isDevelopment = (() => {
+  try {
+    return process.env.NODE_ENV === 'development';
+  } catch {
+    // Fallback for environments where process.env might not be available
+    return false;
   }
-  
-  return value;
+})();
+
+/**
+ * Gets an environment variable with validation and graceful fallbacks
+ */
+function getEnvVar(key: string, defaultValue: string = ''): string {
+  try {
+    const value = process.env[key];
+    
+    if (!value || value.trim() === '') {
+      if (isDevelopment) {
+        console.warn(`[Dev Mode] Environment variable ${key} is not set, using default: "${defaultValue}"`);
+        return defaultValue;
+      } else {
+        // In production, log error but continue with default
+        console.error(`Error: Required environment variable ${key} is not set`);
+        return defaultValue;
+      }
+    }
+    
+    return value;
+  } catch (error) {
+    // Handle Edge Runtime or other environments where process.env is not available
+    console.warn(`Warning: Could not access environment variable ${key}: ${error}`);
+    return defaultValue;
+  }
 }
 
 /**
- * Environment configuration object with validation
+ * Directly build the environment configuration object
+ * This approach simplifies initialization and prevents circular dependencies
  */
 export const env: EnvConfig = {
-  // API Keys with validation
-  get OPENAI_API_KEY(): string {
+  // API Keys with validation and fallbacks
+  OPENAI_API_KEY: (() => {
     const key = 
       getEnvVar('OPENAI_API_KEY') || 
       getEnvVar('NEXT_PUBLIC_OPENAI_API_KEY') ||
       getEnvVar('VERCEL_OPENAI_API_KEY');
     
-    if (key && (key === 'your_openai_api_key_here' || key.length < 10)) {
+    if (key === 'your_openai_api_key_here' || (key.length > 0 && key.length < 10)) {
       console.error('Warning: OPENAI_API_KEY appears to be a placeholder or invalid');
     }
     
-    return key;
-  },
-
-  get OPENROUTER_API_KEY(): string {
-    const key = 
-      getEnvVar('OPENROUTER_API_KEY') || 
-      getEnvVar('NEXT_PUBLIC_OPENROUTER_API_KEY') ||
-      getEnvVar('VERCEL_OPENROUTER_API_KEY');
-    
-    if (key && (key === 'your_openrouter_api_key_here' || key.length < 10)) {
-      console.error('Warning: OPENROUTER_API_KEY appears to be a placeholder or invalid');
+    // In development mode, return a fallback for testing
+    if (!key && isDevelopment) {
+      console.info('[Dev Mode] Using fallback OpenAI API key for development');
+      return 'sk-dev-fallback-key-for-testing-only';
     }
     
     return key;
-  },
-
-  get TAVILY_API_KEY(): string {
-    const key = 
-      getEnvVar('TAVILY_API_KEY') || 
-      getEnvVar('NEXT_PUBLIC_TAVILY_API_KEY') ||
-      getEnvVar('VERCEL_TAVILY_API_KEY') ||
-      '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'; // Default value from the user input
-    
-    if (key && key === 'your_tavily_api_key_here') {
-      console.error('Warning: TAVILY_API_KEY appears to be a placeholder');
-    }
-    
-    return key;
-  },
+  })(),
+  
+// TAVILY_API_KEY removed
   
   // API URLs
   OPENAI_API_URL: getEnvVar('OPENAI_API_URL', 'https://api.openai.com/v1/chat/completions'),
-  OPENROUTER_API_URL: getEnvVar('OPENROUTER_API_URL', 'https://openrouter.ai/api/v1/chat/completions'),
   
-  // Model configuration
+  // Model configuration with sensible defaults
   PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'gpt-4-turbo'),
   FALLBACK_MODEL: getEnvVar('FALLBACK_MODEL', 'gpt-3.5-turbo'),
+  WEB_SEARCH_ENABLED: (() => {
+    const value = getEnvVar('WEB_SEARCH_ENABLED', 'true');
+    return value.toLowerCase() === 'true';
+  })(),
+  WEB_BROWSING_MODEL: getEnvVar('WEB_BROWSING_MODEL', 'gpt-4-0125-preview'), // Use a specific version that supports browsing
   
-  // Node environment
-  NODE_ENV: (getEnvVar('NODE_ENV', 'development') as EnvConfig['NODE_ENV']),
+  // Node environment - always use a valid value with safe fallback
+  NODE_ENV: (() => {
+    try {
+      if (process.env.NODE_ENV === 'production') return 'production';
+      if (process.env.NODE_ENV === 'test') return 'test';
+      return 'development';
+    } catch {
+      // Edge Runtime fallback
+      return 'production' as EnvConfig['NODE_ENV'];
+    }
+  })(),
   
-  // Deployment info
-  IS_VERCEL: !!process.env.VERCEL,
-  VERCEL_ENV: process.env.VERCEL_ENV,
+  // Deployment info with safe access
+  IS_VERCEL: (() => {
+    try {
+      return !!process.env.VERCEL;
+    } catch {
+      return false;
+    }
+  })(),
+  VERCEL_ENV: (() => {
+    try {
+      return process.env.VERCEL_ENV || '';
+    } catch {
+      return '';
+    }
+  })(),
 };
 
 /**
  * Validate the API key format
+ * Returns true if the API key is properly configured
  */
 export function isApiKeyConfigured(): boolean {
+  // In development mode, we're more lenient with API key requirements
+  if (isDevelopment) {
+    return true;
+  }
+  
+  // In production, verify the API key has a reasonable format
   return Boolean(env.OPENAI_API_KEY && env.OPENAI_API_KEY.length > 10);
 }
 
 /**
- * Get environment diagnostic information (useful for debugging)
+ * Get environment diagnostic information
+ * This is useful for debugging purposes
  */
 export function getEnvDiagnostics(): Record<string, string | boolean> {
   return {
@@ -125,6 +157,7 @@ export function getEnvDiagnostics(): Record<string, string | boolean> {
     environment: env.NODE_ENV,
     isVercel: env.IS_VERCEL,
     vercelEnv: env.VERCEL_ENV || 'not set',
-    tavilyApiKeyConfigured: Boolean(env.TAVILY_API_KEY) ? 'yes' : 'no',
+    webSearchEnabled: env.WEB_SEARCH_ENABLED ? 'yes' : 'no',
+    webBrowsingModel: env.WEB_BROWSING_MODEL
   };
-} 
+}

@@ -40,7 +40,24 @@ export interface RetrievalResult {
   error?: string;
 }
 
+export interface WebSearchResult {
+  url: string;
+  title: string;
+  snippet: string;
+}
+
+export interface QuestionAnswerResult {
+  success: boolean;
+  answer?: string;
+  sourceDocuments?: Array<{
+    pageContent: string;
+    metadata: Record<string, any>;
+  }>;
+  webSearchResults?: WebSearchResult[];
+  error?: string;
+}
+
 export interface ApiKeys {
   tavilyApiKey?: string;
   openaiApiKey?: string;
-} 
+}

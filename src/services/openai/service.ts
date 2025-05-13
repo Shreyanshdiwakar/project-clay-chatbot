@@ -3,13 +3,49 @@ import {
   ChatCompletionRequest, 
   ChatCompletionResponse, 
   ApiErrorResponse,
-  ModelResponse
+  ModelResponse,
 } from './types';
+import { WebSearchResult } from '../langchain/types';
 import { EDUCATIONAL_CONSULTANT_PROMPT } from './system-prompt';
+import fetch from 'node-fetch';
 
-export function createSystemPrompt(pdfContent?: string | null, profileContext?: string | null): string {
+// Define Tool type for web browsing capabilities
+type Tool = {
+  type: string;  // Tool type (e.g., "retrieval", "function")
+  function?: {   // Required for function tools
+    name: string;
+    description: string;
+    parameters?: Record<string, any>;
+  };
+};
+
+// Interface for ChatCompletionRequest with web search tools
+interface ChatCompletionOptions extends ChatCompletionRequest {
+  tools?: Tool[];  // Add tools parameter for web browsing capability
+  tool_choice?: "auto" | "none";  // Control when tools are used
+}
+
+// Using OpenAI's built-in web browsing capability instead of external search API
+
+export function createSystemPrompt(pdfContent?: string | null, profileContext?: string | null, webAccessEnabled?: boolean): string {
   // Use the educational consultant prompt as the base system prompt
   let systemPrompt = EDUCATIONAL_CONSULTANT_PROMPT;
+
+  // If web access is enabled, add that to the system prompt
+  if (webAccessEnabled) {
+    systemPrompt += `\n\n**IMPORTANT - WEB SEARCH:**
+
+You must search the web to find current and accurate information for this query.
+Ensure you cite your sources and provide specific examples from current information.
+
+Key points to address:
+1. Use current information from reliable sources
+2. Include specific examples and data points
+3. Cite your sources with links where possible
+4. Ensure the information is up-to-date
+
+Always verify information through web search before responding.`;
+  }
 
   if (profileContext) {
     systemPrompt += `\n\n**IMPORTANT - STUDENT PROFILE FROM QUESTIONNAIRE:**
@@ -35,6 +71,62 @@ Use the above document information to provide personalized advice specifically t
   return systemPrompt;
 }
 
+/**
+ * Formats the model's response content to include proper citations from web search results
+ * 
+ * @param content The original content from the model
+ * @param webSearchResults Array of web search results with URLs, titles, and snippets
+ * @returns Formatted content with citations as footnotes
+ */
+function formatContentWithCitations(content: string, webSearchResults: WebSearchResult[]): string {
+  if (!content || !webSearchResults || !Array.isArray(webSearchResults) || webSearchResults.length === 0) {
+    return content || '';
+  }
+
+  // Create a mapping of domains to citation numbers
+  const urlMap = new Map<string, number>();
+  
+  // Extract domains from URLs for simpler citation
+  webSearchResults.forEach((result, index) => {
+    try {
+      const url = new URL(result.url);
+      const domain = url.hostname.replace(/^www\./, '');
+      if (!urlMap.has(domain)) {
+        urlMap.set(domain, index + 1);
+      }
+    } catch (e) {
+      console.warn(`Invalid URL in web search result: ${result.url}`);
+    }
+  });
+
+  // Add footnotes section at the end of the content
+  let formattedContent = content;
+
+  // Only add the citations section if we have valid URLs
+  if (urlMap.size > 0) {
+    formattedContent += '\n\n---\n\n**Sources:**\n\n';
+    
+    webSearchResults.forEach((result, index) => {
+      try {
+        const url = new URL(result.url);
+        const domain = url.hostname.replace(/^www\./, '');
+        const citationNumber = urlMap.get(domain);
+        
+        if (citationNumber !== undefined) {
+          formattedContent += `[${citationNumber}] ${result.title || domain} - ${result.url}\n`;
+          
+          // Remove this domain from the map so we don't list it again
+          urlMap.delete(domain);
+        }
+      } catch (e) {
+        // Skip invalid URLs
+      }
+    });
+  }
+
+  return formattedContent;
+}
+
 // Mock response function for development when API key is missing
 function getMockResponse(userMessage: string): ModelResponse {
   console.log('Using mock response for development');
@@ -57,11 +149,22 @@ function getMockResponse(userMessage: string): ModelResponse {
   };
 }
 
+/**
+ * With dataSources API, OpenAI handles web search information internally
+ * No need to extract it from messages
+ */
+function extractWebSearchInfo(messages: any[]): WebSearchResult[] {
+  // With web search capability, we don't need to extract web search info
+  // OpenAI handles this internally
+  return [];
+}
+
 export async function callOpenAIAPI(
   model: string, 
   userMessage: string, 
   pdfContent?: string | null,
-  profileContext?: string | null
+  profileContext?: string | null,
+  enableWebSearch?: boolean
 ): Promise<ModelResponse> {
   try {
     console.log(`Sending request to OpenAI API using ${model}...`);
@@ -74,9 +177,35 @@ export async function callOpenAIAPI(
     
     console.log(`API key length: ${apiKey.length}, prefix: ${apiKey.substring(0, 3)}, suffix: ${apiKey.substring(apiKey.length - 3)}`);
     
-    const systemPrompt = createSystemPrompt(pdfContent, profileContext);
+    // Check if web search is enabled both via parameter and environment setting
+    const useWebSearch = enableWebSearch && env.WEB_SEARCH_ENABLED;
+    
+    // If web search is enabled, ensure we're using a model that supports browsing
+    if (useWebSearch) {
+      // Use the configured browsing model from environment
+      model = env.WEB_BROWSING_MODEL;
+      console.log(`Web search enabled, using model with browsing support: ${model}`);
+      
+      // Verify that we're using a model that supports browsing
+      if (!model.includes('0125-preview')) {
+        console.warn(`Warning: Model ${model} may not support web browsing. Changing to gpt-4-0125-preview.`);
+        model = 'gpt-4-0125-preview';
+      }
+      
+      console.log(`Using model ${model} with built-in web search capabilities`);
+    }
+    
+    const systemPrompt = createSystemPrompt(pdfContent, profileContext, useWebSearch);
 
-    const requestBody: ChatCompletionRequest = {
+    // Prepare user message - only add search instruction if web search is enabled
+    let enhancedUserMessage = userMessage;
+    if (useWebSearch) {
+      const searchInstruction = "This is a question about educational activities and college admissions. Please search the web for current information before answering to ensure your response is accurate and up-to-date.";
+      enhancedUserMessage = `${searchInstruction}\n\n${userMessage}`;
+    }
+    
+    // Create base request body with simple text response format
+    const requestBody: ChatCompletionOptions = {
       model: model,
       messages: [
         {
@@ -85,54 +214,113 @@ export async function callOpenAIAPI(
         },
         {
           role: 'user',
-          content: userMessage
+          content: enhancedUserMessage
         }
       ],
       temperature: 0.7
     };
     
+    // Only add tools configuration when web search is enabled
+    if (useWebSearch) {
+      console.log('Web search enabled, configuring tools for API request');
+      
+      try {
+        requestBody.tools = [{ 
+          type: "web_search",
+          function: {
+            name: "web_search",
+            description: "Search the web for current information"
+          }
+        }];
+        requestBody.tool_choice = "auto";
+        console.log('Using web_search tool configuration');
+      } catch (toolError) {
+        console.warn('Error configuring web search tools:', toolError);
+        // Continue without tools on error to ensure the request still works
+        delete requestBody.tools;
+        delete requestBody.tool_choice;
+      }
+    }
+    // When web search is disabled, we don't need to add any tools configuration
+    
     const headers = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
+      // No OpenAI-Beta header needed for browsing tools
     };
     
     console.log('OpenAI request headers:', JSON.stringify({
-      ...headers,
+      'Content-Type': headers['Content-Type'],
       'Authorization': 'Bearer ***'
     }));
     
-    console.log('OpenAI request body:', JSON.stringify({
+    // Log the request body with special handling for tools to ensure they're properly serialized
+    const logRequestBody = {
       ...requestBody,
       messages: [
         { role: 'system', content: '(system prompt, truncated for logs)' },
         { role: 'user', content: userMessage.substring(0, 100) + (userMessage.length > 100 ? '...' : '') }
       ]
-    }, null, 2));
+    };
     
-    const response = await fetch(env.OPENAI_API_URL, {
+    console.log('OpenAI request body:', JSON.stringify(logRequestBody, null, 2));
+    
+    // Final stringified request body for debugging
+    const requestJson = JSON.stringify(requestBody);
+    console.log('Final request JSON length:', requestJson.length);
+    
+    // Send the initial request
+    let response = await fetch(env.OPENAI_API_URL, {
       method: 'POST',
       headers,
-      body: JSON.stringify(requestBody),
+      body: requestJson,
     });
     
     if (!response.ok) {
       let errorText: string;
+      let errorData: any = null;
+      
       try {
-        const errorJson = await response.json() as ApiErrorResponse;
-        errorText = errorJson.error?.message || `Error ${response.status}: ${response.statusText}`;
-      } catch {
-        errorText = await response.text();
+        // Try to get detailed error information
+        const errorResponse = await response.text();
+        try {
+          // Try to parse as JSON first
+          errorData = JSON.parse(errorResponse);
+          errorText = errorData.error?.message || `Error ${response.status}: ${response.statusText}`;
+          
+          // Log any general API errors
+          if (useWebSearch) {
+            console.error('Web search-related error detected:', errorText);
+          }
+        } catch (jsonError) {
+          // If JSON parsing fails, use the raw text
+          errorText = errorResponse;
+          console.error('Non-JSON error response:', 
+            errorText.substring(0, 200) + (errorText.length > 200 ? '...' : ''));
+        }
+      } catch (textError) {
+        // If we can't even get text, fall back to status only
+        errorText = `Error ${response.status}: ${response.statusText}`;
       }
       
-      console.error(`OpenAI API error (${response.status}):`, errorText);
+      // Log more detailed error information
+      if (useWebSearch) {
+        console.error(`OpenAI API web search error (${response.status}):`, errorText.substring(0, 500));
+      console.error('Web search request details:', {
+          model
+        });
+      }
+      
+      console.error(`OpenAI API error (${response.status}):`, errorText.substring(0, 500));
       return {
         success: false,
-        error: `OpenAI API returned status ${response.status}: ${errorText.substring(0, 200)}${errorText.length > 200 ? '...' : ''}`
+        error: `OpenAI API returned status ${response.status}: ${errorText.substring(0, 200)}${errorText.length > 200 ? '...' : ''}`,
+        webSearchAttempted: useWebSearch
       };
     }
     
-    const responseData = await response.json() as ChatCompletionResponse;
-    console.log('OpenAI API response:', JSON.stringify(responseData, null, 2));
+    let responseData = await response.json() as ChatCompletionResponse;
+    console.log('Initial OpenAI API response:', JSON.stringify(responseData, null, 2));
     
     if (!responseData.choices || responseData.choices.length === 0 || !responseData.choices[0].message) {
       console.error('OpenAI API returned an invalid response structure:', responseData);
@@ -142,25 +330,34 @@ export async function callOpenAIAPI(
       };
     }
     
-    const content = responseData.choices[0].message.content.trim();
+    const message = responseData.choices[0].message;
+    const content = message.content?.trim() || '';
     
+    // Special handling for empty content
     if (!content) {
       console.error('OpenAI API returned an empty message content');
       return {
         success: false,
-        error: 'The API returned an empty message.'
+        error: 'The API returned an empty message with no content.',
+        webSearchAttempted: useWebSearch
       };
     }
     
+    // Return the final response with additional metadata
     return {
       success: true,
-      content
+      content,
+      webSearchAttempted: useWebSearch,
+      model: responseData.model || model,
+      // Include response metadata to help with debugging
+      responseTime: Date.now() - new Date(responseData.created * 1000).getTime()
     };
   } catch (error) {
     console.error(`Error while using model ${model}:`, error);
     return {
       success: false,
-      error: `API call failed: ${error instanceof Error ? error.message : String(error)}`
+      error: `API call failed: ${error instanceof Error ? error.message : String(error)}`,
+      webSearchAttempted: enableWebSearch
     };
   }
 }
@@ -168,19 +365,36 @@ export async function callOpenAIAPI(
 export async function getModelResponse(
   userMessage: string, 
   pdfContent?: string | null,
-  profileContext?: string | null
+  profileContext?: string | null,
+  webSearch: boolean = true
 ): Promise<ModelResponse> {
   // For development without API key, use mock response
   if (env.NODE_ENV === 'development' && (!env.OPENAI_API_KEY || env.OPENAI_API_KEY.length < 10)) {
     return getMockResponse(userMessage);
   }
 
-  let response = await callOpenAIAPI(env.PRIMARY_MODEL, userMessage, pdfContent, profileContext);
+  // Check if web search is enabled in the environment
+  let enableWebSearch = webSearch && env.WEB_SEARCH_ENABLED;
   
-  if (!response.success && response.error) {
-    console.log(`Primary model (${env.PRIMARY_MODEL}) failed with error: ${response.error}. Trying fallback model...`);
-    response = await callOpenAIAPI(env.FALLBACK_MODEL, userMessage, pdfContent, profileContext);
+  // Select the appropriate model based on web search setting
+  const selectedModel = enableWebSearch ? env.WEB_BROWSING_MODEL : env.PRIMARY_MODEL;
+  
+  console.log(`Using ${selectedModel} with web search ${enableWebSearch ? 'enabled' : 'disabled'}`);
+  let response = await callOpenAIAPI(selectedModel, userMessage, pdfContent, profileContext, enableWebSearch);
+  
+  // Only attempt fallback if web search was enabled and failed
+  if (!response.success && enableWebSearch) {
+    const errorMessage = response.error || "No content was returned";
+    console.log(`Web search attempt failed with error: ${errorMessage}. Trying without web search...`);
+    
+    // Add warning about web search failure to the next attempt
+    const modifiedMessage = `${userMessage}\n\nNote: I attempted to search the web for more information but encountered a technical issue. This response is based on my training knowledge.`;
+    
+    console.log(`Fallback: Using ${env.PRIMARY_MODEL} with web search disabled`);
+    response = await callOpenAIAPI(env.PRIMARY_MODEL, modifiedMessage, pdfContent, profileContext, false);
+  } else if (!response.success) {
+    console.log(`API request failed: ${response.error}`);
   }
   
   return response;
-} 
+}

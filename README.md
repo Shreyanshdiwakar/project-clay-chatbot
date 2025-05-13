@@ -1,4 +1,4 @@
-# Academic Counselor AI Chatbot
+# ProjectClay Chatbot
 
 A full-stack AI chatbot built with Next.js and Tailwind CSS that helps high school students plan their extracurricular activities for college applications.
 
@@ -18,19 +18,22 @@ A full-stack AI chatbot built with Next.js and Tailwind CSS that helps high scho
 
 ## Tech Stack
 
-- Next.js (React framework)
-- TypeScript
-- Tailwind CSS
+- Next.js 15.3.2 (React framework)
+- React 19.1.0
+- TypeScript 5.8.3
+- Tailwind CSS 3.4.17
 - OpenAI API (GPT-3.5, GPT-4)
-- LangChain for document processing and retrieval
+- LangChain 0.1.37 for document processing and retrieval
 - Chroma Vector Database for semantic search
-- HuggingFace embeddings for document vectorization
+- Radix UI for accessible UI components
+- Tesseract.js for OCR capabilities
+- Sonner for toast notifications
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.18.0 or higher
+- Node.js 20.11.0 or higher (recommended for Next.js 15)
 - npm or yarn
 - OpenAI API key (see below)
 - Tavily API key for web search (optional)
@@ -122,6 +125,53 @@ The chatbot includes a feature that visualizes the "thinking process" of the AI 
 
 This makes the interaction more engaging and provides transparency into the AI's reasoning process.
 
+## UI Components
+
+The application uses Radix UI components for building accessible and customizable user interfaces:
+
+- Dialog components for modal windows
+- Dropdown menus for navigation and actions
+- Avatar components for user and bot representations
+- Tabs for organizing content sections
+- Separator components for visual boundaries
+- Label components for form accessibility
+
+These components are styled with Tailwind CSS and offer a consistent and responsive user experience across different devices and screen sizes.
+
+## Testing
+
+### Web Search Testing
+
+To test the web search functionality:
+
+1. Ensure the development server is running:
+   ```
+   npm run dev
+   ```
+
+2. Run the web search test script:
+   ```
+   npm run test:web-search
+   ```
+
+This will send a test request to the API and verify if web search is working correctly by:
+- Checking if web search was attempted
+- Verifying tool calls were processed
+- Confirming content was returned
+- Checking if web search results were included
+
+The test uses a predefined query: "What are the current top universities for computer science in 2024?"
+
+### General Testing
+
+The project includes a test suite for verifying core functionality:
+
+```bash
+npm run test
+```
+
+This executes tests using ts-node with ESM support for TypeScript integration testing.
+
 ## Troubleshooting
 
 If you encounter the "No auth credentials found" error:
@@ -155,7 +205,7 @@ To use a different model from OpenAI, you can modify the `PRIMARY_MODEL` constan
 
 ## Directory Structure
 
-Key directories and files for the LangChain integration:
+Key directories and files in the project:
 
 - `src/services/langchain/` - Core LangChain service files
   - `documentLoaders.ts` - Handles loading and processing documents
@@ -163,14 +213,54 @@ Key directories and files for the LangChain integration:
   - `vectorStore.ts` - Interfaces with the Chroma vector database
   - `retrievalChain.ts` - Implements question answering functionality
   
-- `src/app/api/langchain/` - API endpoints for LangChain functionality
-  - `process-document/route.ts` - Handles document uploads and processing
-  - `query/route.ts` - Handles vector store queries
-  - `ask/route.ts` - Handles question answering
+- `src/app/api/` - API endpoints
+  - `chat/route.ts` - Handles chat requests to OpenAI
+  - `langchain/` - LangChain API endpoints
+    - `process-document/route.ts` - Handles document uploads and processing
+    - `query/route.ts` - Handles vector store queries
+    - `ask/route.ts` - Handles question answering
+  - `search/route.ts` - Handles web search integration
 
-- `src/components/` - React components for LangChain UI
+- `src/components/` - React components
+  - `ui/` - UI components based on Radix UI
+  - `chat/` - Chat-related components
   - `LangChainFileUpload.tsx` - Component for uploading documents
   - `LangChainQuery.tsx` - Component for querying the vector store
+
+- `src/tests/` - Test files
+  - `test.ts` - General test suite
+  - `test-web-search.ts` - Web search functionality tests
+
+## Development Tools
+
+The project uses several development tools for better code quality and build processes:
+
+- TypeScript 5.8.3 for type safety
+- ESLint 9 for code linting
+- Next.js ESLint config for React best practices
+- Cross-env for environment variable management across platforms
+- Autoprefixer for CSS compatibility
+- Dotenv for environment variable management
+- TS-Node for TypeScript execution in Node.js
+
+### Build Commands
+
+```bash
+# Development mode
+npm run dev
+
+# Production build
+npm run build
+
+# Production build with TypeScript and ESLint checks skipped
+npm run build:production
+
+# Start production server
+npm run start
+
+# Lint code
+npm run lint
+```
 
 ## License
 

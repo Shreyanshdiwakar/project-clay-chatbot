@@ -14,7 +14,7 @@ import { LangChainQuery } from '@/components/LangChainQuery';
 import { KnowledgeBaseManager } from '@/components/KnowledgeBaseManager';
 import { StudentQuestionnaire, StudentProfile } from '@/components/StudentQuestionnaire';
 import { generateRecommendations } from '@/services/recommendations';
-import { RecommendationResponse } from '@/services/recommendations/legacy';
+import { RecommendationResponse, EnhancedRecommendationResponse } from '@/services/recommendations/types';
 import { AlertCircle, BookOpen, Award, Calendar, Trophy } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [profileContext, setProfileContext] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export default function Home() {
   // Student profile and recommendations states
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
-  const [recommendations, setRecommendations] = useState<RecommendationResponse | null>(null);
+  const [recommendations, setRecommendations] = useState<RecommendationResponse | EnhancedRecommendationResponse | null>(null);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
   // Scroll to bottom when messages change
@@ -48,6 +49,10 @@ export default function Home() {
       setShowQuestionnaire(true);
     }, 1000);
   }, []);
+
+  const toggleSearchMode = () => {
+    setIsSearchMode(prev => !prev);
+  };
 
   const handleSendMessage = async (content: string, files?: File[]) => {
     // If no message but files are present, use a default message
@@ -103,54 +108,85 @@ export default function Home() {
     }
 
     try {
-      console.log('Sending message to API:', messageToSend.substring(0, 30) + (messageToSend.length > 30 ? '...' : ''));
+      // Always use the chat endpoint, which now handles web search
+      const endpoint = '/api/chat';
+      console.log(`Sending message to Chat API${isSearchMode ? ' with web search' : ''}:`, 
+        messageToSend.substring(0, 30) + (messageToSend.length > 30 ? '...' : ''));
       
       // Include profile context if available
       const profileCtx = studentProfile ? `Student Profile: ${JSON.stringify(studentProfile)}` : '';
       
-      const response = await fetch('/api/chat', {
+      // Log the request payload for debugging
+      const requestPayload = { 
+        message: messageToSend,
+        pdfContent: extractedText || profileContext || '',
+        profileContext: profileCtx,
+        isWebSearch: isSearchMode
+      };
+      console.log('Request payload:', JSON.stringify(requestPayload).substring(0, 200) + '...');
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: messageToSend,
-          pdfContent: extractedText || profileContext || '',
-          profileContext: profileCtx
-        })
+        body: JSON.stringify(requestPayload)
       });
       
       console.log('API response status:', response.status, response.statusText);
       
       let data;
       
-      try {
-        // Try to get response text first
-        const responseText = await response.text();
+      // First check if the response was successful
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText.substring(0, 500));
         
-        // Try to parse as JSON if we have content
-        if (responseText && responseText.trim() !== '') {
-          try {
-            data = JSON.parse(responseText);
-          } catch (e) {
-            console.error('Error parsing JSON response:', e);
-            throw new Error('Failed to parse API response');
-          }
-        } else if (!response.ok) {
-          throw new Error(`API error: ${response.status} ${response.statusText}`);
-        } else {
-          throw new Error('The API returned an empty response');
+        // Try to parse the error as JSON if possible
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `API error: ${response.status} ${response.statusText}`);
+        } catch (parseError) {
+          // If parsing fails, it's not a JSON response
+          throw new Error(`API error (${response.status}): ${response.statusText}`);
         }
-      } catch (err) {
-        console.error('Error reading API response:', err);
-        throw new Error(`Failed to read API response: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      
+      try {
+        // For successful responses, try to get response as JSON directly
+        data = await response.json();
+      } catch (e) {
+        console.error('Error parsing JSON from successful response:', e);
+        
+        // Try to read as text and then parse
+        try {
+          const responseText = await response.text();
+          console.error('Raw response text:', responseText.substring(0, 500));
+          
+          if (responseText && responseText.trim() !== '') {
+            data = JSON.parse(responseText);
+          } else {
+            throw new Error('The API returned an empty response');
+          }
+        } catch (textError) {
+          console.error('Failed to process response:', textError);
+          throw new Error('Failed to parse API response');
+        }
       }
       
       // Validate API response
       if (!data || typeof data !== 'object') {
+        console.error('Invalid API response format:', data);
         throw new Error('The API response format was invalid or empty');
+      }
+      
+      // Check for error field in the response
+      if (data.error) {
+        console.error('API returned error:', data.error);
+        throw new Error(`API error: ${data.error}`);
       }
       
       // Ensure message property exists
       if (!data.message) {
+        console.error('Missing message in API response:', data);
         throw new Error('The API response is missing required fields');
       }
       
@@ -181,8 +217,17 @@ export default function Home() {
       }, data.thinking && data.thinking.length > 0 ? 800 : 0);
     } catch (err) {
       setIsThinking(false);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
       console.error('Error sending message:', err);
+      
+      // Add an error message to the chat
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        content: `❌ Error: ${errorMessage}. Please try again later.`,
+        role: 'assistant',
+        timestamp: new Date()
+      }]);
     }
   };
 
@@ -329,7 +374,12 @@ export default function Home() {
             </div>
             
             <div className="pt-2">
-              <ChatInput onSendMessage={handleSendMessage} disabled={isThinking} />
+              <ChatInput 
+                onSendMessage={handleSendMessage} 
+                disabled={isThinking} 
+                isSearchMode={isSearchMode}
+                onToggleSearchMode={toggleSearchMode}
+              />
             </div>
           </TabsContent>
 

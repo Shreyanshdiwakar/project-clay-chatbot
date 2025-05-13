@@ -2,18 +2,22 @@
 
 import { useState, useRef, FormEvent, ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Paperclip, Send, Loader2 } from 'lucide-react';
+import { Paperclip, Send, Loader2, Search } from 'lucide-react';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: File[]) => void;
   disabled?: boolean;
   placeholder?: string;
+  isSearchMode?: boolean;
+  onToggleSearchMode?: () => void;
 }
 
 export function ChatInput({ 
   onSendMessage, 
   disabled = false, 
-  placeholder = "Type your message..."
+  placeholder = "Type your message...",
+  isSearchMode = false,
+  onToggleSearchMode = () => {}
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -69,7 +73,7 @@ export function ChatInput({
         </div>
       )}
       
-      <div className="flex items-center border border-zinc-700 rounded-lg bg-zinc-900 overflow-hidden focus-within:ring-2 focus-within:ring-zinc-600 transition-all">
+      <div className={`flex items-center border ${isSearchMode ? 'border-indigo-600' : 'border-zinc-700'} rounded-lg bg-zinc-900 overflow-hidden focus-within:ring-2 focus-within:ring-zinc-600 transition-all`}>
         <button
           type="button"
           onClick={triggerFileUpload}
@@ -83,9 +87,9 @@ export function ChatInput({
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder={placeholder}
+          placeholder={isSearchMode ? "Search the web..." : placeholder}
           disabled={disabled}
-          className="w-full bg-transparent p-3 text-white border-none outline-none placeholder:text-zinc-500"
+          className={`w-full bg-transparent p-3 text-white border-none outline-none placeholder:text-zinc-500 ${isSearchMode ? 'bg-indigo-900/10' : ''}`}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -93,6 +97,17 @@ export function ChatInput({
             }
           }}
         />
+        
+        <Button 
+          type="button"
+          onClick={onToggleSearchMode}
+          disabled={disabled}
+          className={`m-1.5 rounded-md ${isSearchMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-zinc-800 hover:bg-zinc-700'} text-white transition-colors p-2`}
+          size="icon"
+          title={`${isSearchMode ? 'Disable' : 'Enable'} web search`}
+        >
+          <Search className="h-5 w-5" />
+        </Button>
         
         <Button 
           type="submit"
@@ -114,6 +129,13 @@ export function ChatInput({
         multiple
         className="hidden"
       />
+      
+      {isSearchMode && (
+        <div className="mt-2 flex items-center text-xs text-indigo-400">
+          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse mr-1.5"></div>
+          <span>Web Search Mode Active</span>
+        </div>
+      )}
     </form>
   );
 } 

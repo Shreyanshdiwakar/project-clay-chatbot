@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "description": "Academic counselor chatbot powered by OpenAI API",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "build:production": "cross-env NEXT_SKIP_TYPESCRIPT_CHECK=true NEXT_SKIP_ESLINT_CHECK=true next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm src/tests/test.ts",
+    "test:web-search": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm src/tests/test-web-search.ts"
   },
   "dependencies": {
     "@langchain/community": "^0.0.29",
@@ -44,17 +47,19 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@types/node": "^20",
+    "@types/node": "^20.17.46",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/uuid": "^9.0.8",
     "autoprefixer": "^10.4.15",
     "buffer": "^6.0.3",
     "cross-env": "^7.0.3",
+    "dotenv": "^16.5.0",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "null-loader": "^4.0.1",
     "process": "^0.11.10",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }

@@ -2,7 +2,7 @@
  * Chat Types for Client Components
  */
 
-import { ModelInfo } from '@/services/openrouter';
+import { ModelInfo } from '@/services/openai/types';
 import type { ChatResponse } from './api';
 
 /**
