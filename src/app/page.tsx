@@ -19,6 +19,7 @@ import { AlertCircle, BookOpen, Award, Calendar, Trophy, AlertTriangle } from 'l
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export default function Home() {
