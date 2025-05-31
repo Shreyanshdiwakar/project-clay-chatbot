@@ -257,8 +257,9 @@ export async function callOpenAIAPI(
       console.log('Web search enabled, configuring tools for API request');
       
       try {
+        // Fixed: Changed "web_search" to "function" for the type
         requestBody.tools = [{ 
-          type: "web_search",
+          type: "function",
           function: {
             name: "web_search",
             description: "Search the web for current information"
