@@ -181,13 +181,94 @@ function getMockResponse(userMessage: string): ModelResponse {
 }
 
 /**
- * With dataSources API, OpenAI handles web search information internally
- * No need to extract it from messages
+ * Performs a web search based on tool call arguments and returns the results
  */
-function extractWebSearchInfo(messages: any[]): WebSearchResult[] {
-  // With web search capability, we don't need to extract web search info
-  // OpenAI handles this internally
-  return [];
+async function performWebSearch(query: string): Promise<WebSearchResult[]> {
+  // In a real implementation, this would connect to a search API like Google, Bing, or a specialized service
+  // For now, we'll return some mock results
+  console.log(`Performing mock web search for: ${query}`);
+  
+  // Check if the query contains certain keywords to return more specific mock results
+  if (query.toLowerCase().includes('college') || query.toLowerCase().includes('university')) {
+    return [
+      {
+        title: "QS World University Rankings 2025: Top Global Universities",
+        url: "https://www.topuniversities.com/university-rankings/world-university-rankings/2025",
+        snippet: "The latest QS World University Rankings 2025 feature over 1,500 universities from around the world. MIT, Stanford, and Oxford lead the rankings."
+      },
+      {
+        title: "The World's Top 100 Universities | US News Best Global Universities",
+        url: "https://www.usnews.com/education/best-global-universities/rankings",
+        snippet: "Find the world's top universities ranked by academic reputation, employer reputation, and research impact. Harvard, MIT, and Stanford are consistently ranked highly."
+      },
+      {
+        title: "Times Higher Education World University Rankings 2025",
+        url: "https://www.timeshighereducation.com/world-university-rankings/2025",
+        snippet: "The Times Higher Education World University Rankings 2025 include over 1,900 universities across 108 countries, making them the largest international university rankings."
+      }
+    ];
+  } else if (query.toLowerCase().includes('competition') || 
+             query.toLowerCase().includes('scholarship')) {
+    return [
+      {
+        title: "Top Academic Competitions for High School Students 2025",
+        url: "https://www.collegeconfidential.com/academic-competitions",
+        snippet: "Comprehensive guide to prestigious academic competitions including Regeneron Science Talent Search, International Mathematical Olympiad, and National Speech & Debate Tournament."
+      },
+      {
+        title: "Merit Scholarships at Top Universities - Class of 2025",
+        url: "https://www.collegetransitions.com/scholarships/merit-scholarships",
+        snippet: "Guide to finding and applying for merit-based scholarships at prestigious universities for the class of 2025."
+      }
+    ];
+  }
+  
+  // Default generic results
+  return [
+    {
+      title: "Search Result 1",
+      url: "https://example.com/result1",
+      snippet: "This is the first search result snippet with relevant information."
+    },
+    {
+      title: "Search Result 2",
+      url: "https://example.com/result2",
+      snippet: "This is the second search result snippet with more information."
+    }
+  ];
+}
+
+// Helper function to handle OpenAI function calls
+async function handleFunctionCalls(toolCalls: any[]): Promise<{name: string; content: string;}[]> {
+  const results: {name: string; content: string;}[] = [];
+  const webSearchResults: WebSearchResult[] = [];
+  
+  for (const toolCall of toolCalls) {
+    if (toolCall.type !== 'function') continue;
+    
+    const functionName = toolCall.function.name;
+    const args = JSON.parse(toolCall.function.arguments || '{}');
+    
+    if (functionName === 'web_search') {
+      console.log(`Processing web_search function call with arguments:`, args);
+      // Default query to empty string if not provided
+      const query = args.query || '';
+      const searchResults = await performWebSearch(query);
+      
+      // Store search results for later use
+      webSearchResults.push(...searchResults);
+      
+      // Format results as JSON string
+      const resultContent = JSON.stringify(searchResults);
+      
+      results.push({
+        name: functionName,
+        content: resultContent
+      });
+    }
+  }
+  
+  return results;
 }
 
 export async function callOpenAIAPI(
@@ -366,7 +447,7 @@ export async function callOpenAIAPI(
     let responseData = await response.json() as ChatCompletionResponse;
     console.log('Initial OpenAI API response:', JSON.stringify(responseData, null, 2));
     
-    if (!responseData.choices || responseData.choices.length === 0 || !responseData.choices[0].message) {
+    if (!responseData.choices || responseData.choices.length === 0) {
       console.error('OpenAI API returned an invalid response structure:', responseData);
       return {
         success: false,
@@ -375,6 +456,119 @@ export async function callOpenAIAPI(
     }
     
     const message = responseData.choices[0].message;
+    
+    // Handle tool calls (e.g., web search)
+    if (message.tool_calls && message.tool_calls.length > 0) {
+      console.log('Tool calls detected in the response. Handling tool calls...');
+      
+      // Process tool calls (e.g., web search)
+      const toolResults = await handleFunctionCalls(message.tool_calls);
+      
+      // Prepare messages for the follow-up request
+      const followUpMessages = [
+        ...requestBody.messages,
+        {
+          role: 'assistant',
+          content: null,
+          tool_calls: message.tool_calls
+        }
+      ];
+      
+      // Add tool results as messages
+      for (const tool of toolResults) {
+        followUpMessages.push({
+          role: 'tool',
+          content: tool.content,
+          name: tool.name
+        });
+      }
+      
+      // Create the follow-up request
+      console.log('Sending follow-up request with tool results...');
+      
+      // Log the follow-up messages (truncated for clarity)
+      const logFollowUpMessages = followUpMessages.map(m => {
+        if (m.role === 'tool') {
+          return {
+            ...m,
+            content: m.content.substring(0, 100) + (m.content.length > 100 ? '...' : '')
+          };
+        }
+        if (m.role === 'system') {
+          return {
+            ...m,
+            content: '(system prompt, truncated for logs)'
+          };
+        }
+        return m;
+      });
+      console.log('Follow-up messages:', JSON.stringify(logFollowUpMessages, null, 2));
+      
+      // Remove tools configuration for follow-up request
+      // We don't want to trigger tools again in the final answer
+      const followUpRequest = {
+        model: model,
+        messages: followUpMessages,
+        temperature: 0.7,
+        max_tokens: 1000
+      };
+      
+      const followUpResponse = await fetch(env.OPENAI_API_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(followUpRequest),
+      });
+      
+      if (!followUpResponse.ok) {
+        console.error('Follow-up request failed:', followUpResponse.status, followUpResponse.statusText);
+        return {
+          success: false,
+          error: `Follow-up request failed: ${followUpResponse.status} ${followUpResponse.statusText}`,
+          webSearchAttempted: true
+        };
+      }
+      
+      const followUpData = await followUpResponse.json();
+      console.log('Follow-up response:', JSON.stringify(followUpData, null, 2));
+      
+      if (!followUpData.choices || followUpData.choices.length === 0 || !followUpData.choices[0].message) {
+        console.error('Invalid follow-up response format:', followUpData);
+        return {
+          success: false,
+          error: 'Invalid follow-up response format',
+          webSearchAttempted: true
+        };
+      }
+      
+      const finalContent = followUpData.choices[0].message.content?.trim() || '';
+      
+      // Extract web search results from tool results
+      const webSearchResults: WebSearchResult[] = [];
+      for (const tool of toolResults) {
+        if (tool.name === 'web_search') {
+          try {
+            const results = JSON.parse(tool.content);
+            if (Array.isArray(results)) {
+              webSearchResults.push(...results);
+            }
+          } catch (e) {
+            console.warn('Error parsing web search results:', e);
+          }
+        }
+      }
+      
+      // Return the final response with web search results
+      return {
+        success: true,
+        content: finalContent,
+        webSearchAttempted: true,
+        webSearchResults: webSearchResults.length > 0 ? webSearchResults : undefined,
+        model: followUpData.model || model,
+        toolCallsMade: message.tool_calls?.length || 0,
+        responseTime: Date.now() - new Date(responseData.created * 1000).getTime()
+      };
+    }
+    
     const content = message.content?.trim() || '';
     
     // Special handling for empty content
