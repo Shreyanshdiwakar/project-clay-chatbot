@@ -674,11 +674,21 @@ async function getCompetitionRecommendations(
     console.log("Requesting competition recommendations using web search");
     
     try {
+      // Check if we should use API or fallback to mock data
+      const usingMockData = !process.env.OPENAI_API_KEY || 
+                           process.env.OPENAI_API_KEY === 'invalid-key-use-mock-responses';
+      
+      if (usingMockData) {
+        console.log("API key not configured - using fallback competition data");
+        return generateFallbackCompetitions(profile);
+      }
+      
       // Make a request to the AI with web search enabled
       const modelResponse = await getModelResponse(prompt, null, null, true);
       
       if (!modelResponse.success || !modelResponse.content) {
-        throw new Error("Failed to generate competition recommendations");
+        console.log("Failed to generate competition recommendations, using fallback data");
+        return generateFallbackCompetitions(profile);
       }
       
       const responseContent = modelResponse.content;
@@ -695,25 +705,30 @@ async function getCompetitionRecommendations(
       
       const jsonString = jsonMatch[1] || jsonMatch[0];
       
-      // Parse the JSON response
-      const parsedResponse = JSON.parse(jsonString);
-      
-      if (!Array.isArray(parsedResponse.competitions)) {
-        console.error("Invalid competitions format in response:", parsedResponse);
+      try {
+        // Parse the JSON response
+        const parsedResponse = JSON.parse(jsonString);
+        
+        if (!Array.isArray(parsedResponse.competitions)) {
+          console.error("Invalid competitions format in response:", parsedResponse);
+          return generateFallbackCompetitions(profile);
+        }
+        
+        // Format and validate the competition recommendations
+        return parsedResponse.competitions.map(comp => ({
+          name: comp.name || 'Recommended Competition',
+          description: comp.description || 'No description provided',
+          link: comp.link || '#',
+          deadline: comp.deadline || 'Varies',
+          eligibility: comp.eligibility || 'High school students',
+          benefits: comp.benefits || 'Enhances your college application'
+        }));
+      } catch (parseError) {
+        console.error('Error parsing competition JSON:', parseError);
         return generateFallbackCompetitions(profile);
       }
-      
-      // Format and validate the competition recommendations
-      return parsedResponse.competitions.map(comp => ({
-        name: comp.name || 'Recommended Competition',
-        description: comp.description || 'No description provided',
-        link: comp.link || '#',
-        deadline: comp.deadline || 'Varies',
-        eligibility: comp.eligibility || 'High school students',
-        benefits: comp.benefits || 'Enhances your college application'
-      }));
-    } catch (parseError) {
-      console.error('Error parsing competition recommendations:', parseError);
+    } catch (error) {
+      console.error('Error in competition recommendations:', error);
       return generateFallbackCompetitions(profile);
     }
   } catch (error) {
@@ -726,6 +741,7 @@ async function getCompetitionRecommendations(
  * Generate fallback competition recommendations if web search fails
  */
 function generateFallbackCompetitions(profile: StudentProfile): CompetitionRecommendation[] {
+  console.log("Using fallback competition recommendations");
   const major = profile.intendedMajor?.toLowerCase() || '';
   
   const fallbackCompetitions: CompetitionRecommendation[] = [
@@ -815,6 +831,15 @@ async function getExternalActivityRecommendations(
       Include specific, real programs where possible, with current information.
     `;
 
+    // Check if we should use API or fallback to mock data
+    const usingMockData = !process.env.OPENAI_API_KEY || 
+                          process.env.OPENAI_API_KEY === 'invalid-key-use-mock-responses';
+    
+    if (usingMockData) {
+      console.log("API key not configured - using mock activity recommendations");
+      return generateMockActivityRecommendations(profile);
+    }
+
     try {
       // Make a request to the server-side API
       const responseContent = await makeServerSideRequest(prompt);
@@ -826,21 +851,26 @@ async function getExternalActivityRecommendations(
                         
       const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : responseContent;
       
-      const parsedResponse = JSON.parse(jsonString);
-      
-      if (Array.isArray(parsedResponse.recommendations)) {
-        return parsedResponse.recommendations.map(rec => ({
-          name: rec.name || 'Recommended Activity',
-          description: rec.description || 'No description provided',
-          relevance: rec.relevance || 'Aligns with your interests and goals',
-          difficulty: rec.difficulty || 'intermediate',
-          timeCommitment: rec.timeCommitment || 'Varies',
-          skillsDeveloped: rec.skillsDeveloped || ['Leadership', 'Project Management']
-        }));
+      try {
+        const parsedResponse = JSON.parse(jsonString);
+        
+        if (Array.isArray(parsedResponse.recommendations)) {
+          return parsedResponse.recommendations.map(rec => ({
+            name: rec.name || 'Recommended Activity',
+            description: rec.description || 'No description provided',
+            relevance: rec.relevance || 'Aligns with your interests and goals',
+            difficulty: rec.difficulty || 'intermediate',
+            timeCommitment: rec.timeCommitment || 'Varies',
+            skillsDeveloped: rec.skillsDeveloped || ['Leadership', 'Project Management']
+          }));
+        }
+        throw new Error('Invalid response format from API');
+      } catch (parseError) {
+        console.error('Error parsing API response:', parseError);
+        return generateMockActivityRecommendations(profile);
       }
-      throw new Error('Invalid response format from API');
-    } catch (parseError) {
-      console.error('Error parsing API response:', parseError);
+    } catch (error) {
+      console.error('Error getting external activity recommendations:', error);
       return generateMockActivityRecommendations(profile);
     }
   } catch (error) {
@@ -1006,6 +1036,8 @@ export async function generateHybridRecommendations(
   profile: StudentProfile
 ): Promise<EnhancedRecommendationResponse> {
   try {
+    console.log("Generating hybrid recommendations for profile:", profile.name);
+    
     // Select the appropriate templates based on the student profile
     const templates = selectTemplates(profile);
     
@@ -1038,9 +1070,19 @@ export async function generateHybridRecommendations(
       .filter(line => line.includes('- '))
       .map(line => line.replace(/^[^-]*- /, '').trim());
 
-    // Get competition recommendations with web search
-    console.log("Generating competition recommendations with web search");
-    const competitionRecs = await getCompetitionRecommendations(profile);
+    // Check if we should use API or fallback competitions
+    const usingMockData = !process.env.OPENAI_API_KEY || 
+                         process.env.OPENAI_API_KEY === 'invalid-key-use-mock-responses';
+    
+    // Get competition recommendations
+    console.log(`Generating competition recommendations using ${usingMockData ? 'fallback data' : 'web search'}`);
+    let competitionRecs;
+    try {
+      competitionRecs = await getCompetitionRecommendations(profile);
+    } catch (compError) {
+      console.error("Error getting competitions, using fallbacks:", compError);
+      competitionRecs = generateFallbackCompetitions(profile);
+    }
     
     // Format competition recommendations with links
     const competitions = competitionRecs.map(comp => 
@@ -1048,7 +1090,13 @@ export async function generateHybridRecommendations(
     );
     
     // Get external activity recommendations
-    const recommendedActivities = await getExternalActivityRecommendations(profile);
+    let recommendedActivities;
+    try {
+      recommendedActivities = await getExternalActivityRecommendations(profile);
+    } catch (actError) {
+      console.error("Error getting activities, using fallbacks:", actError);
+      recommendedActivities = generateMockActivityRecommendations(profile);
+    }
     
     return {
       suggestedProjects: projectLines,

@@ -71,22 +71,35 @@ function getEnvVar(key: string, defaultValue: string = ''): string {
 export const env: EnvConfig = {
   // API Keys with validation and fallbacks
   OPENAI_API_KEY: (() => {
+    // Use directly from .env.local file if available - highest priority
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) {
+      console.info('Using OPENAI_API_KEY from environment variables');
+      return process.env.OPENAI_API_KEY;
+    }
+    
+    // Try alternative variable names
     const key = 
       getEnvVar('OPENAI_API_KEY') || 
       getEnvVar('NEXT_PUBLIC_OPENAI_API_KEY') ||
       getEnvVar('VERCEL_OPENAI_API_KEY');
+    
+    if (key && key.startsWith('sk-')) {
+      console.info('Found valid OpenAI API key with prefix:', key.substring(0, 5) + '...');
+      return key;
+    }
     
     if (key === 'your_openai_api_key_here' || (key.length > 0 && key.length < 10)) {
       console.error('Warning: OPENAI_API_KEY appears to be a placeholder or invalid');
     }
     
     // In development mode, return a fallback for testing
-    if (!key && isDevelopment) {
-      console.info('[Dev Mode] Using fallback OpenAI API key for development');
-      return 'sk-dev-fallback-key-for-testing-only';
+    if ((!key || !key.startsWith('sk-')) && isDevelopment) {
+      console.info('[Dev Mode] Using mock responses - no valid API key found');
+      // Return an obviously invalid key so we fall back to mock responses
+      return 'invalid-key-use-mock-responses';
     }
     
-    return key;
+    return key || '';
   })(),
   
   // API URLs
@@ -141,7 +154,7 @@ export function isApiKeyConfigured(): boolean {
   }
   
   // In production, verify the API key has a reasonable format
-  return Boolean(env.OPENAI_API_KEY && env.OPENAI_API_KEY.length > 10);
+  return Boolean(env.OPENAI_API_KEY && env.OPENAI_API_KEY.length > 10 && env.OPENAI_API_KEY.startsWith('sk-'));
 }
 
 /**

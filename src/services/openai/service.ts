@@ -170,12 +170,14 @@ export async function callOpenAIAPI(
     console.log(`Sending request to OpenAI API using ${model}...`);
     
     const apiKey = env.OPENAI_API_KEY;
-    if (!apiKey || apiKey.length < 10) {
-      console.log('API key not configured - using mock response for development');
+    
+    // Check if we have a valid API key (should start with 'sk-')
+    if (!apiKey || !apiKey.startsWith('sk-') || apiKey === 'invalid-key-use-mock-responses') {
+      console.log('Valid API key not configured - using mock response for development');
       return getMockResponse(userMessage);
     }
     
-    console.log(`API key length: ${apiKey.length}, prefix: ${apiKey.substring(0, 3)}, suffix: ${apiKey.substring(apiKey.length - 3)}`);
+    console.log(`API key configured: ${apiKey.substring(0, 5)}...${apiKey.substring(apiKey.length - 4)}`);
     
     // Check if web search is enabled both via parameter and environment setting
     const useWebSearch = enableWebSearch && env.WEB_SEARCH_ENABLED;
@@ -304,7 +306,7 @@ export async function callOpenAIAPI(
       // Log more detailed error information
       if (useWebSearch) {
         console.error(`OpenAI API web search error (${response.status}):`, errorText.substring(0, 500));
-      console.error('Web search request details:', {
+        console.error('Web search request details:', {
           model
         });
       }
@@ -367,7 +369,8 @@ export async function getModelResponse(
   webSearch: boolean = true
 ): Promise<ModelResponse> {
   // For development without API key, use mock response
-  if (env.NODE_ENV === 'development' && (!env.OPENAI_API_KEY || env.OPENAI_API_KEY.length < 10)) {
+  if (!env.OPENAI_API_KEY || !env.OPENAI_API_KEY.startsWith('sk-') || env.OPENAI_API_KEY === 'invalid-key-use-mock-responses') {
+    console.log('Valid API key not configured - using mock response for development');
     return getMockResponse(userMessage);
   }
 
