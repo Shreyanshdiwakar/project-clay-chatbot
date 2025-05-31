@@ -144,10 +144,6 @@ function getMockResponse(userMessage: string): ModelResponse {
     "**Thanks for reaching out!**\n\nWhen planning extracurricular activities for college applications, consider these key strategies:\n\n1. **Demonstrate passion** through sustained commitment to activities related to your intended field of study\n2. **Show initiative** by creating new programs or expanding existing ones\n3. **Develop transferable skills** like leadership, teamwork, and problem-solving\n\n**Examples of Strong Activities:**\n- Starting a club related to your interests\n- Conducting an independent research project\n- Creating a community service initiative addressing a local need\n- Participating in selective summer programs in your field\n\nWhat grade are you in currently? This will help me provide more tailored advice."
   ];
   
-  // Use the message content to pseudo-randomly select a response
-  const messageHash = userMessage.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const responseIndex = messageHash % responses.length;
-  
   // Create a mock web search if the question seems to ask for competitions
   if (userMessage.toLowerCase().includes('competition') || 
       userMessage.toLowerCase().includes('olympiad') || 
@@ -172,6 +168,10 @@ function getMockResponse(userMessage: string): ModelResponse {
       model: "gpt-4.1-mini"
     };
   }
+  
+  // Use the message content to pseudo-randomly select a response
+  const messageHash = userMessage.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const responseIndex = messageHash % responses.length;
   
   return {
     success: true,
