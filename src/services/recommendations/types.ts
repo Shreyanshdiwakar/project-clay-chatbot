@@ -8,6 +8,9 @@ export interface RecommendationResponse {
   suggestedSkills: string[];
   timeline: string[];
   profileAnalysis: string;
+}
+
+export interface EnhancedRecommendationResponse extends RecommendationResponse {
   recommendedActivities: {
     name: string;
     description: string;
@@ -17,9 +20,3 @@ export interface RecommendationResponse {
     skillsDeveloped: string[];
   }[];
 }
-
-export interface EnhancedRecommendationResponse extends RecommendationResponse {
-  // The interface extends the base response, with the same field types
-  // No need to redefine fields unless their types change
-}
-

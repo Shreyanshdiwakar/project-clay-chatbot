@@ -8,6 +8,7 @@
 import { StudentProfile } from '@/components/StudentQuestionnaire';
 import { selectTemplates, RecommendationTemplate } from './templates';
 import { RecommendationResponse, EnhancedRecommendationResponse } from './types';
+import { getModelResponse } from '@/services/openai/service';
 
 /**
  * Detailed recommendation for activities with metadata
@@ -19,6 +20,18 @@ interface ExternalActivityRecommendation {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   timeCommitment: string;
   skillsDeveloped: string[];
+}
+
+/**
+ * Competition recommendation with additional information
+ */
+interface CompetitionRecommendation {
+  name: string;
+  description: string;
+  link: string;
+  deadline?: string;
+  eligibility?: string;
+  benefits?: string;
 }
 
 /**
@@ -579,7 +592,7 @@ async function fillTemplate(
 /**
  * Make a request to the server-side API endpoint for AI-generated content
  */
-async function makeServerSideRequest(message: string): Promise<string> {
+async function makeServerSideRequest(message: string, useWebSearch: boolean = false): Promise<string> {
   try {
     // Construct the absolute URL for the API endpoint
     const apiUrl = typeof window !== 'undefined' 
@@ -597,6 +610,7 @@ async function makeServerSideRequest(message: string): Promise<string> {
       },
       body: JSON.stringify({
         message,
+        isWebSearch: useWebSearch
       }),
     });
 
@@ -611,6 +625,167 @@ async function makeServerSideRequest(message: string): Promise<string> {
     console.error('Error making server-side request:', error);
     throw error;
   }
+}
+
+/**
+ * Get competition recommendations using web search
+ * This function uses web search to find relevant, up-to-date competitions
+ */
+async function getCompetitionRecommendations(
+  profile: StudentProfile
+): Promise<CompetitionRecommendation[]> {
+  try {
+    const prompt = `
+      Based on this student profile:
+      - Grade: ${profile.gradeLevel}
+      - Intended Major: ${profile.intendedMajor}
+      - Current Activities: ${profile.currentActivities}
+      - Interested In: ${profile.interestedActivities}
+      
+      Use web search to find 5 specific, current academic competitions, olympiads, or challenges that are most relevant to this student's interests and background.
+      
+      For each competition, include:
+      1. Official name of the competition
+      2. A brief description
+      3. The official website URL (provide complete URL, not just the domain)
+      4. Eligibility requirements (grade levels, age, etc.)
+      5. Key deadlines if available
+      6. Why this competition specifically matches this student's profile
+      
+      Format your response as JSON with the following structure:
+      {
+        "competitions": [
+          {
+            "name": "Competition Name",
+            "description": "Brief description",
+            "link": "https://complete.url.com",
+            "eligibility": "Eligibility info",
+            "deadline": "Deadline info or 'Varies'",
+            "benefits": "Why this is valuable"
+          }
+        ]
+      }
+      
+      Use web search to ensure information is current and accurate for ${new Date().getFullYear()}-${new Date().getFullYear() + 1}.
+      Only include competitions with active websites and upcoming opportunities.
+      Focus on competitions with the greatest prestige and impact for college applications.
+    `;
+
+    console.log("Requesting competition recommendations using web search");
+    
+    try {
+      // Make a request to the AI with web search enabled
+      const modelResponse = await getModelResponse(prompt, null, null, true);
+      
+      if (!modelResponse.success || !modelResponse.content) {
+        throw new Error("Failed to generate competition recommendations");
+      }
+      
+      const responseContent = modelResponse.content;
+      
+      // Extract JSON from the response
+      const jsonMatch = responseContent.match(/```json\n([\s\S]*)\n```/) || 
+                        responseContent.match(/```\n([\s\S]*)\n```/) || 
+                        responseContent.match(/\{[\s\S]*\}/);
+                        
+      if (!jsonMatch) {
+        console.error("Could not extract JSON from response:", responseContent.substring(0, 200));
+        return generateFallbackCompetitions(profile);
+      }
+      
+      const jsonString = jsonMatch[1] || jsonMatch[0];
+      
+      // Parse the JSON response
+      const parsedResponse = JSON.parse(jsonString);
+      
+      if (!Array.isArray(parsedResponse.competitions)) {
+        console.error("Invalid competitions format in response:", parsedResponse);
+        return generateFallbackCompetitions(profile);
+      }
+      
+      // Format and validate the competition recommendations
+      return parsedResponse.competitions.map(comp => ({
+        name: comp.name || 'Recommended Competition',
+        description: comp.description || 'No description provided',
+        link: comp.link || '#',
+        deadline: comp.deadline || 'Varies',
+        eligibility: comp.eligibility || 'High school students',
+        benefits: comp.benefits || 'Enhances your college application'
+      }));
+    } catch (parseError) {
+      console.error('Error parsing competition recommendations:', parseError);
+      return generateFallbackCompetitions(profile);
+    }
+  } catch (error) {
+    console.error('Error getting competition recommendations:', error);
+    return generateFallbackCompetitions(profile);
+  }
+}
+
+/**
+ * Generate fallback competition recommendations if web search fails
+ */
+function generateFallbackCompetitions(profile: StudentProfile): CompetitionRecommendation[] {
+  const major = profile.intendedMajor?.toLowerCase() || '';
+  
+  const fallbackCompetitions: CompetitionRecommendation[] = [
+    {
+      name: "International Science and Engineering Fair (ISEF)",
+      description: "The world's largest international pre-college science competition.",
+      link: "https://www.societyforscience.org/isef/",
+      eligibility: "High school students grades 9-12",
+      deadline: "Regional deadlines vary; finals in May",
+      benefits: "Prestigious recognition, scholarships, and networking with leading scientists"
+    },
+    {
+      name: "The Breakthrough Junior Challenge",
+      description: "A global competition for students to create short videos explaining scientific concepts.",
+      link: "https://breakthroughjuniorchallenge.org/",
+      eligibility: "Students ages 13-18",
+      deadline: "Submissions typically due in June",
+      benefits: "$250,000 scholarship for the winner, plus benefits for teachers and schools"
+    },
+    {
+      name: "International Mathematical Olympiad (IMO)",
+      description: "The world's championship mathematics competition for high school students.",
+      link: "https://www.imo-official.org/",
+      eligibility: "High school students under age 20",
+      deadline: "National selection processes begin in fall",
+      benefits: "Gold, silver, and bronze medals; recognized by top universities worldwide"
+    }
+  ];
+  
+  // Add more specialized competitions based on intended major
+  if (major.includes('comput') || major.includes('tech') || major.includes('program')) {
+    fallbackCompetitions.push({
+      name: "USA Computing Olympiad (USACO)",
+      description: "A computer programming competition for secondary school students.",
+      link: "http://www.usaco.org/",
+      eligibility: "Secondary school students",
+      deadline: "Multiple contests throughout the year",
+      benefits: "Recognition by top computer science programs; training camp opportunities"
+    });
+  } else if (major.includes('business') || major.includes('econ')) {
+    fallbackCompetitions.push({
+      name: "DECA International Career Development Conference",
+      description: "Business case study competitions in various categories.",
+      link: "https://www.deca.org/",
+      eligibility: "High school students",
+      deadline: "State competitions typically January-March",
+      benefits: "Leadership development, networking, and scholarships"
+    });
+  } else if (major.includes('art') || major.includes('design')) {
+    fallbackCompetitions.push({
+      name: "Scholastic Art & Writing Awards",
+      description: "Nation's longest-running recognition program for creative students.",
+      link: "https://www.artandwriting.org/",
+      eligibility: "Students grades 7-12, ages 13 and up",
+      deadline: "Regional deadlines typically in December/January",
+      benefits: "Scholarships, exhibition opportunities, and national recognition"
+    });
+  }
+  
+  return fallbackCompetitions;
 }
 
 /**
@@ -863,8 +1038,14 @@ export async function generateHybridRecommendations(
       .filter(line => line.includes('- '))
       .map(line => line.replace(/^[^-]*- /, '').trim());
 
-    // Generate competition suggestions based on profile and major
-    const competitions = generateCompetitionSuggestions(profile.intendedMajor);
+    // Get competition recommendations with web search
+    console.log("Generating competition recommendations with web search");
+    const competitionRecs = await getCompetitionRecommendations(profile);
+    
+    // Format competition recommendations with links
+    const competitions = competitionRecs.map(comp => 
+      `${comp.name} - [${comp.link}](${comp.link})`
+    );
     
     // Get external activity recommendations
     const recommendedActivities = await getExternalActivityRecommendations(profile);
@@ -887,8 +1068,9 @@ export async function generateHybridRecommendations(
         'Create a portfolio showcasing your work and accomplishments'
       ],
       suggestedCompetitions: [
-        'Research competitions in your field of interest',
-        'Participate in local or regional academic contests'
+        'International Science and Engineering Fair - [https://www.societyforscience.org/isef/]',
+        'Regeneron Science Talent Search - [https://www.societyforscience.org/regeneron-sts/]',
+        'International Mathematical Olympiad - [https://www.imo-official.org/]'
       ],
       suggestedSkills: [
         'Develop strong communication and presentation skills',
@@ -905,57 +1087,4 @@ export async function generateHybridRecommendations(
       recommendedActivities: []
     };
   }
-}
-
-/**
- * Generate competition suggestions based on student's intended major
- */
-function generateCompetitionSuggestions(major: string): string[] {
-  const defaultCompetitions = [
-    'Academic competitions in your field of interest',
-    'Local and regional student contests',
-    'Research and project showcase events'
-  ];
-
-  if (!major || major === "undecided major") return defaultCompetitions;
-
-  const lowerMajor = major.toLowerCase();
-  
-  if (lowerMajor.includes('comput') || lowerMajor.includes('tech') || lowerMajor.includes('engineer')) {
-    return [
-      'Hackathons and coding competitions',
-      'Science and Engineering fairs',
-      'Robotics competitions',
-      'Math and programming olympiads'
-    ];
-  }
-  
-  if (lowerMajor.includes('business') || lowerMajor.includes('econ')) {
-    return [
-      'DECA competitions',
-      'Business plan competitions',
-      'Stock market simulation contests',
-      'Entrepreneurship challenges'
-    ];
-  }
-  
-  if (lowerMajor.includes('science') || lowerMajor.includes('bio') || lowerMajor.includes('chem')) {
-    return [
-      'Science Olympiad',
-      'Science Bowl competitions',
-      'Research science fairs',
-      'Laboratory research programs'
-    ];
-  }
-  
-  if (lowerMajor.includes('art') || lowerMajor.includes('music') || lowerMajor.includes('drama')) {
-    return [
-      'Art exhibitions and contests',
-      'Music performance competitions',
-      'Theater and drama festivals',
-      'Portfolio showcases'
-    ];
-  }
-  
-  return defaultCompetitions;
 }

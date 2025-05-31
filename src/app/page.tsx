@@ -15,7 +15,7 @@ import { KnowledgeBaseManager } from '@/components/KnowledgeBaseManager';
 import { StudentQuestionnaire, StudentProfile } from '@/components/StudentQuestionnaire';
 import { generateRecommendations } from '@/services/recommendations';
 import { RecommendationResponse, EnhancedRecommendationResponse } from '@/services/recommendations/types';
-import { AlertCircle, BookOpen, Award, Calendar, Trophy, AlertTriangle } from 'lucide-react';
+import { AlertCircle, BookOpen, Award, Calendar, Trophy, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -398,258 +398,265 @@ export default function Home() {
   };
 
   return (
-    <TooltipProvider>
-      <div className="flex flex-col min-h-screen bg-zinc-950 text-white overflow-hidden">
-        <Header />
+    <div className="flex flex-col min-h-screen bg-zinc-950 text-white overflow-hidden">
+      <Header />
 
-        {/* Student Questionnaire Modal */}
-        {showQuestionnaire && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="w-full max-w-2xl">
-              <StudentQuestionnaire 
-                onComplete={handleProfileComplete} 
-                onSkip={handleSkipQuestionnaire} 
+      {/* Student Questionnaire Modal */}
+      {showQuestionnaire && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl">
+            <StudentQuestionnaire 
+              onComplete={handleProfileComplete} 
+              onSkip={handleSkipQuestionnaire} 
+            />
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 w-full p-2 md:p-4 max-w-7xl mx-auto overflow-hidden">
+        <Tabs defaultValue="chat" className="w-full">
+          <TabsList className="grid grid-cols-4 mb-4 bg-zinc-900 p-1 rounded-xl">
+            <TabsTrigger value="chat" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Chat</TabsTrigger>
+            <TabsTrigger value="recommendations" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Recommendations</TabsTrigger>
+            <TabsTrigger value="knowledgeBase" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Knowledge Base</TabsTrigger>
+            <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Settings</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="chat" className="space-y-4 h-[calc(100vh-12rem)] flex flex-col">
+            {/* Chat UI */}
+            <div className="flex-1 overflow-y-auto space-y-4 px-2 pt-4 pb-0 hide-scrollbar">
+              {messages.map(message => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                />
+              ))}
+              {isThinking && (
+                <ThinkingIndicator steps={thinkingSteps} model="GPT-4.1 Mini" />
+              )}
+              {error && (
+                <Alert variant="destructive" className="bg-red-950/30 border-red-800/30 text-red-300">
+                  <AlertTriangle className="h-5 w-5" />
+                  <AlertTitle className="text-red-300">Error</AlertTitle>
+                  <AlertDescription className="text-red-200">{error}</AlertDescription>
+                </Alert>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+            
+            <div className="pt-2">
+              <ChatInput 
+                onSendMessage={handleSendMessage} 
+                disabled={isThinking} 
+                isSearchMode={isSearchMode}
+                onToggleSearchMode={toggleSearchMode}
+                placeholder="Ask about college planning, activities, or admissions..."
               />
             </div>
-          </div>
-        )}
+          </TabsContent>
 
-        <main className="flex-1 w-full p-2 md:p-4 max-w-7xl mx-auto overflow-hidden">
-          <Tabs defaultValue="chat" className="w-full">
-            <TabsList className="grid grid-cols-4 mb-4 bg-zinc-900 p-1 rounded-xl">
-              <TabsTrigger value="chat" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Chat</TabsTrigger>
-              <TabsTrigger value="recommendations" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Recommendations</TabsTrigger>
-              <TabsTrigger value="knowledgeBase" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Knowledge Base</TabsTrigger>
-              <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Settings</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="chat" className="space-y-4 h-[calc(100vh-12rem)] flex flex-col">
-              {/* Chat UI */}
-              <div className="flex-1 overflow-y-auto space-y-4 px-2 pt-4 pb-0 hide-scrollbar">
-                {messages.map(message => (
-                  <ChatMessage
-                    key={message.id}
-                    message={message}
-                  />
-                ))}
-                {isThinking && (
-                  <ThinkingIndicator steps={thinkingSteps} model="GPT-4.1 Mini" />
-                )}
-                {error && (
-                  <Alert variant="destructive\" className="bg-red-950/30 border-red-800/30 text-red-300">
-                    <AlertTriangle className="h-5 w-5" />
-                    <AlertTitle className="text-red-300">Error</AlertTitle>
-                    <AlertDescription className="text-red-200">{error}</AlertDescription>
-                  </Alert>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-              
-              <div className="pt-2">
-                <ChatInput 
-                  onSendMessage={handleSendMessage} 
-                  disabled={isThinking} 
-                  isSearchMode={isSearchMode}
-                  onToggleSearchMode={toggleSearchMode}
-                  placeholder="Ask about college planning, activities, or admissions..."
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="recommendations">
-              {!studentProfile ? (
-                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="text-zinc-100">Complete Your Profile</CardTitle>
-                    <CardDescription className="text-zinc-400">
-                      Fill out your student profile to get personalized recommendations
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <Alert className="bg-blue-950/20 border-blue-800/30">
-                        <AlertCircle className="h-5 w-5 text-blue-400" />
-                        <AlertTitle className="text-blue-300">Profile Required</AlertTitle>
-                        <AlertDescription className="text-blue-200">
-                          Complete the student questionnaire to get personalized recommendations for your college journey.
-                        </AlertDescription>
-                      </Alert>
-                      <Button 
-                        onClick={() => setShowQuestionnaire(true)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        Start Questionnaire
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : isLoadingRecommendations ? (
-                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="text-zinc-100">Generating Recommendations</CardTitle>
-                    <CardDescription className="text-zinc-400">
-                      Please wait while we create personalized recommendations based on your profile
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex justify-center py-8">
-                    <ThinkingIndicator steps={[]} model="GPT-4.1 Mini" />
-                  </CardContent>
-                </Card>
-              ) : recommendations ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-zinc-100">
-                        <BookOpen className="h-5 w-5 text-blue-400" />
-                        Suggested Projects
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {recommendations.suggestedProjects.map((project, idx) => (
-                          <li key={idx} className="flex gap-2 items-start">
-                            <span className="text-blue-400 mt-1">•</span>
-                            <span className="text-zinc-300">{project}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-zinc-100">
-                        <Trophy className="h-5 w-5 text-amber-400" />
-                        Suggested Competitions
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {recommendations.suggestedCompetitions.map((comp, idx) => (
-                          <li key={idx} className="flex gap-2 items-start">
-                            <span className="text-amber-400 mt-1">•</span>
-                            <span className="text-zinc-300">{comp}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-zinc-100">
-                        <Award className="h-5 w-5 text-purple-400" />
-                        Skills to Develop
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {recommendations.suggestedSkills.map((skill, idx) => (
-                          <li key={idx} className="flex gap-2 items-start">
-                            <span className="text-purple-400 mt-1">•</span>
-                            <span className="text-zinc-300">{skill}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-zinc-100">
-                        <Calendar className="h-5 w-5 text-green-400" />
-                        Timeline
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {recommendations.timeline.map((item, idx) => (
-                          <li key={idx} className="flex gap-2 items-start">
-                            <span className="text-green-400 mt-1">•</span>
-                            <span className="text-zinc-300">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="md:col-span-2 bg-zinc-900 border-zinc-800 shadow-lg">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-zinc-100">Profile Analysis</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-zinc-300">{recommendations.profileAnalysis}</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : (
-                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="text-zinc-100">Recommendations Not Available</CardTitle>
-                    <CardDescription className="text-zinc-400">
-                      There was an issue generating your recommendations
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button 
-                      onClick={() => handleProfileComplete(studentProfile)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      Try Again
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="knowledgeBase">
-              <KnowledgeBaseManager defaultCollection="college-data" />
-            </TabsContent>
-            
-            <TabsContent value="settings">
+          <TabsContent value="recommendations">
+            {!studentProfile ? (
               <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
                 <CardHeader>
-                  <CardTitle className="text-zinc-100">Settings</CardTitle>
+                  <CardTitle className="text-zinc-100">Complete Your Profile</CardTitle>
                   <CardDescription className="text-zinc-400">
-                    Configure app settings and preferences
+                    Fill out your student profile to get personalized recommendations
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-                    <h3 className="text-md font-medium mb-2 text-zinc-200">Model Configuration</h3>
-                    <p className="text-sm text-zinc-400 mb-3">
-                      This app is configured to use GPT-4.1 Mini for optimal performance and faster response times.
-                    </p>
-                    <div className="bg-zinc-800 p-3 rounded-lg border border-zinc-700">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                          <span className="text-zinc-300 text-sm">GPT-4.1 Mini</span>
-                        </div>
-                        <Badge variant="outline" className="bg-zinc-700/50">Active</Badge>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
-                    <h3 className="text-md font-medium mb-2 text-zinc-200">Web Search</h3>
-                    <p className="text-sm text-zinc-400 mb-3">
-                      Enable web search to get information from the internet when you need it.
-                    </p>
-                    <Button
-                      onClick={toggleSearchMode}
-                      variant={isSearchMode ? "default" : "outline"}
-                      className={isSearchMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+                <CardContent>
+                  <div className="space-y-4">
+                    <Alert className="bg-blue-950/20 border-blue-800/30">
+                      <AlertCircle className="h-5 w-5 text-blue-400" />
+                      <AlertTitle className="text-blue-300">Profile Required</AlertTitle>
+                      <AlertDescription className="text-blue-200">
+                        Complete the student questionnaire to get personalized recommendations for your college journey.
+                      </AlertDescription>
+                    </Alert>
+                    <Button 
+                      onClick={() => setShowQuestionnaire(true)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      {isSearchMode ? "Web Search Enabled" : "Web Search Disabled"}
+                      Start Questionnaire
                     </Button>
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
-        </main>
-      </div>
-    </TooltipProvider>
+            ) : isLoadingRecommendations ? (
+              <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-zinc-100">Generating Recommendations</CardTitle>
+                  <CardDescription className="text-zinc-400">
+                    Please wait while we create personalized recommendations based on your profile
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center py-8">
+                  <ThinkingIndicator steps={[]} model="GPT-4.1 Mini" />
+                </CardContent>
+              </Card>
+            ) : recommendations ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-zinc-100">
+                      <BookOpen className="h-5 w-5 text-blue-400" />
+                      Suggested Projects
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {recommendations.suggestedProjects.map((project, idx) => (
+                        <li key={idx} className="flex gap-2 items-start">
+                          <span className="text-blue-400 mt-1">•</span>
+                          <span className="text-zinc-300">{project}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
+                  <CardHeader className="pb-2 flex flex-row justify-between items-center">
+                    <CardTitle className="flex items-center gap-2 text-zinc-100">
+                      <Trophy className="h-5 w-5 text-amber-400" />
+                      Suggested Competitions
+                    </CardTitle>
+                    <Badge variant="outline" className="bg-blue-900/20 border-blue-700/30 text-blue-300 text-xs">
+                      Web Search
+                    </Badge>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {recommendations.suggestedCompetitions.map((comp, idx) => (
+                        <li key={idx} className="flex gap-2 items-start">
+                          <span className="text-amber-400 mt-1">•</span>
+                          <span className="text-zinc-300">
+                            <span 
+                              dangerouslySetInnerHTML={{
+                                __html: comp.replace(/\[([^\]]+)\]\(([^)]+)\)/, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline inline-flex items-center gap-1">$1 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>')
+                              }}
+                            />
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-zinc-100">
+                      <Award className="h-5 w-5 text-purple-400" />
+                      Skills to Develop
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {recommendations.suggestedSkills.map((skill, idx) => (
+                        <li key={idx} className="flex gap-2 items-start">
+                          <span className="text-purple-400 mt-1">•</span>
+                          <span className="text-zinc-300">{skill}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-zinc-100">
+                      <Calendar className="h-5 w-5 text-green-400" />
+                      Timeline
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {recommendations.timeline.map((item, idx) => (
+                        <li key={idx} className="flex gap-2 items-start">
+                          <span className="text-green-400 mt-1">•</span>
+                          <span className="text-zinc-300">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="md:col-span-2 bg-zinc-900 border-zinc-800 shadow-lg">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-zinc-100">Profile Analysis</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-zinc-300">{recommendations.profileAnalysis}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-zinc-100">Recommendations Not Available</CardTitle>
+                  <CardDescription className="text-zinc-400">
+                    There was an issue generating your recommendations
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    onClick={() => handleProfileComplete(studentProfile)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Try Again
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="knowledgeBase">
+            <KnowledgeBaseManager defaultCollection="college-data" />
+          </TabsContent>
+          
+          <TabsContent value="settings">
+            <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-zinc-100">Settings</CardTitle>
+                <CardDescription className="text-zinc-400">
+                  Configure app settings and preferences
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                  <h3 className="text-md font-medium mb-2 text-zinc-200">Model Configuration</h3>
+                  <p className="text-sm text-zinc-400 mb-3">
+                    This app is configured to use GPT-4.1 Mini for optimal performance and faster response times.
+                  </p>
+                  <div className="bg-zinc-800 p-3 rounded-lg border border-zinc-700">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                        <span className="text-zinc-300 text-sm">GPT-4.1 Mini</span>
+                      </div>
+                      <Badge variant="outline" className="bg-zinc-700/50">Active</Badge>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                  <h3 className="text-md font-medium mb-2 text-zinc-200">Web Search</h3>
+                  <p className="text-sm text-zinc-400 mb-3">
+                    Enable web search to get information from the internet when you need it.
+                  </p>
+                  <Button
+                    onClick={toggleSearchMode}
+                    variant={isSearchMode ? "default" : "outline"}
+                    className={isSearchMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  >
+                    {isSearchMode ? "Web Search Enabled" : "Web Search Disabled"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
   );
 }
