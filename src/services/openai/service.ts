@@ -186,13 +186,11 @@ export async function callOpenAIAPI(
       model = env.WEB_BROWSING_MODEL;
       console.log(`Web search enabled, using model with browsing support: ${model}`);
       
-      // Verify that we're using a model that supports browsing
-      if (!model.includes('0125-preview')) {
-        console.warn(`Warning: Model ${model} may not support web browsing. Changing to gpt-4-0125-preview.`);
-        model = 'gpt-4-0125-preview';
+      // Ensure we're using GPT-4.1 Mini for web search
+      if (model !== 'gpt-4.1-mini') {
+        console.log(`Using GPT-4.1 Mini for web search`);
+        model = 'gpt-4.1-mini';
       }
-      
-      console.log(`Using model ${model} with built-in web search capabilities`);
     }
     
     const systemPrompt = createSystemPrompt(pdfContent, profileContext, useWebSearch);
@@ -376,8 +374,8 @@ export async function getModelResponse(
   // Check if web search is enabled in the environment
   let enableWebSearch = webSearch && env.WEB_SEARCH_ENABLED;
   
-  // Select the appropriate model based on web search setting
-  const selectedModel = enableWebSearch ? env.WEB_BROWSING_MODEL : env.PRIMARY_MODEL;
+  // Select the appropriate model - always use GPT-4.1 Mini
+  const selectedModel = 'gpt-4.1-mini';
   
   console.log(`Using ${selectedModel} with web search ${enableWebSearch ? 'enabled' : 'disabled'}`);
   let response = await callOpenAIAPI(selectedModel, userMessage, pdfContent, profileContext, enableWebSearch);

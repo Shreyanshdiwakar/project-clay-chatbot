@@ -16,6 +16,14 @@ import { ModelInfo } from './types';
 
 // Standard model information used for UI display
 export const MODEL_INFO: Record<string, ModelInfo> = {
+  'gpt-4.1-mini': {
+    id: 'gpt-4.1-mini',
+    name: 'GPT-4.1 Mini',
+    description: 'OpenAI\'s newest model with improved efficiency and reasoning capabilities',
+    features: ['Fast Response', 'Reasoning', 'Problem-solving', 'Cost-effective'],
+    developer: 'OpenAI',
+    parameters: '8 billion'
+  },
   'gpt-4o': {
     id: 'gpt-4o',
     name: 'GPT-4o',
@@ -54,4 +62,4 @@ export default {
   getModelResponse,
   generateThinkingSteps,
   MODEL_INFO
-}; 
+};

@@ -10,7 +10,6 @@
 export interface EnvConfig {
   // API Keys
   OPENAI_API_KEY: string;
-// TAVILY_API_KEY removed
   
   // API URLs
   OPENAI_API_URL: string;
@@ -90,19 +89,17 @@ export const env: EnvConfig = {
     return key;
   })(),
   
-// TAVILY_API_KEY removed
-  
   // API URLs
   OPENAI_API_URL: getEnvVar('OPENAI_API_URL', 'https://api.openai.com/v1/chat/completions'),
   
   // Model configuration with sensible defaults
-  PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'gpt-4-turbo'),
+  PRIMARY_MODEL: getEnvVar('PRIMARY_MODEL', 'gpt-4.1-mini'),
   FALLBACK_MODEL: getEnvVar('FALLBACK_MODEL', 'gpt-3.5-turbo'),
   WEB_SEARCH_ENABLED: (() => {
     const value = getEnvVar('WEB_SEARCH_ENABLED', 'true');
     return value.toLowerCase() === 'true';
   })(),
-  WEB_BROWSING_MODEL: getEnvVar('WEB_BROWSING_MODEL', 'gpt-4-0125-preview'), // Use a specific version that supports browsing
+  WEB_BROWSING_MODEL: getEnvVar('WEB_BROWSING_MODEL', 'gpt-4.1-mini'), // Updated to use GPT-4.1 Mini for browsing
   
   // Node environment - always use a valid value with safe fallback
   NODE_ENV: (() => {

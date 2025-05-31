@@ -3,6 +3,7 @@ import { Figtree } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from 'sonner';
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -52,8 +53,10 @@ export default function RootLayout({
           enableSystem={true}
           disableTransitionOnChange
         >
-          {children}
-          <Toaster position="top-right" theme="dark" />
+          <TooltipProvider>
+            {children}
+            <Toaster position="top-right" theme="dark" richColors />
+          </TooltipProvider>
         </ThemeProvider>
       </body>
     </html>
