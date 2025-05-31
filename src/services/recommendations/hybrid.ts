@@ -8,7 +8,7 @@
 import { StudentProfile } from '@/components/StudentQuestionnaire';
 import { selectTemplates, RecommendationTemplate } from './templates';
 import { RecommendationResponse, EnhancedRecommendationResponse } from './types';
-import { getModelResponse } from '../openai/service';
+import { getModelResponse } from '@/services/openai/service';
 
 /**
  * Detailed recommendation for activities with metadata
@@ -578,224 +578,77 @@ async function fillTemplate(
 }
 
 /**
- * Get competition recommendations using web search
- * This function now handles fallbacks gracefully
+ * Get competition recommendations using the web search capability
  */
-async function getCompetitionRecommendations(profile: StudentProfile): Promise<string[]> {
-  try {
-    // Define default competitions in case API call fails
-    const defaultCompetitions = getDefaultCompetitionsForMajor(profile.intendedMajor);
-    
-    // Try to use the OpenAI API to get web search based recommendations
-    const prompt = `
-      As an academic advisor, find 3-5 relevant competitions for a ${profile.gradeLevel} student interested in ${profile.intendedMajor}.
-      Currently involved in: ${profile.currentActivities}
-      Interested in: ${profile.interestedActivities}
-      
-      For each competition, provide:
-      1. Name and brief description
-      2. Official website URL
-      3. Why it's relevant for this student
-      
-      Format each as a markdown link: [Competition Name](https://website-url)
-    `;
-    
-    console.log("Requesting competition recommendations using web search...");
-    
-    try {
-      // Request with web search enabled
-      const response = await getModelResponse(prompt, null, null, true);
-      
-      if (!response.success || !response.content) {
-        console.log("Web search response failed, using default recommendations");
-        return defaultCompetitions;
-      }
-      
-      // Extract competitions with their links from the response
-      // Looking for markdown links in format [name](url)
-      const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-      let match;
-      const competitions = [];
-      
-      while ((match = linkRegex.exec(response.content)) !== null) {
-        competitions.push(`[${match[1]}](${match[2]})`);
-      }
-      
-      // If no links were found, extract text bullets as competitions
-      if (competitions.length === 0) {
-        const bulletPoints = response.content
-          .split('\n')
-          .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-          .map(line => line.trim().substring(1).trim());
-        
-        if (bulletPoints.length > 0) {
-          return bulletPoints;
-        }
-        
-        console.log("No competition links or bullet points found in response, using defaults");
-        return defaultCompetitions;
-      }
-      
-      return competitions.length > 0 ? competitions : defaultCompetitions;
-    } catch (error) {
-      console.error('Error parsing competition recommendations:', error);
-      return defaultCompetitions;
-    }
-  } catch (error) {
-    console.error('Error getting competition recommendations:', error);
-    return [
-      "Error retrieving competition recommendations. Please try again later.",
-      "In the meantime, consider researching competitions related to your field of interest."
-    ];
-  }
-}
-
-/**
- * Get default competitions based on student's intended major
- */
-function getDefaultCompetitionsForMajor(intendedMajor: string): string[] {
-  const major = (intendedMajor || "").toLowerCase();
-  
-  if (major.includes("comput") || major.includes("tech") || major.includes("program")) {
-    return [
-      "[Congressional App Challenge](https://www.congressionalappchallenge.us/)",
-      "[Google Science Fair](https://www.googlesciencefair.com/)",
-      "[FIRST Robotics Competition](https://www.firstinspires.org/robotics/frc)",
-      "[USA Computing Olympiad](https://usaco.org/)"
-    ];
-  } else if (major.includes("business") || major.includes("econ")) {
-    return [
-      "[DECA Competitions](https://www.deca.org/competitions/)",
-      "[National Economics Challenge](https://www.councilforeconed.org/national-economics-challenge/)",
-      "[Diamond Challenge](https://diamondchallenge.org/)",
-      "[FBLA Competitions](https://www.fbla.org/)"
-    ];
-  } else if (major.includes("science") || major.includes("bio") || major.includes("chem")) {
-    return [
-      "[International Science and Engineering Fair](https://www.societyforscience.org/isef/)",
-      "[Science Olympiad](https://www.soinc.org/)",
-      "[USA Biology Olympiad](https://www.usabo-trc.org/)",
-      "[Chemistry Olympiad](https://www.acs.org/education/students/highschool/olympiad.html)"
-    ];
-  } else if (major.includes("math")) {
-    return [
-      "[AMC Competitions](https://www.maa.org/math-competitions)",
-      "[International Mathematical Olympiad](https://www.imo-official.org/)",
-      "[MathCounts](https://www.mathcounts.org/)",
-      "[Harvard-MIT Math Tournament](https://www.hmmt.org/)"
-    ];
-  } else if (major.includes("art") || major.includes("music") || major.includes("perform")) {
-    return [
-      "[YoungArts Competition](https://youngarts.org/competition)",
-      "[Scholastic Art & Writing Awards](https://www.artandwriting.org/)",
-      "[National YoungArts Foundation](https://youngarts.org/)",
-      "[National Art Honor Society](https://www.arteducators.org/community/nahs)"
-    ];
-  } else {
-    return [
-      "[International Science and Engineering Fair](https://www.societyforscience.org/isef/)",
-      "[National History Day](https://www.nhd.org/)",
-      "[Model United Nations](https://www.nmun.org/)",
-      "[Scholastic Art & Writing Awards](https://www.artandwriting.org/)"
-    ];
-  }
-}
-
-/**
- * Make a request to the server-side API endpoint for AI-generated content
- */
-async function makeServerSideRequest(message: string): Promise<string> {
-  try {
-    // Construct the absolute URL for the API endpoint
-    const apiUrl = typeof window !== 'undefined' 
-      ? `${window.location.origin}/api/chat` 
-      : process.env.NEXT_PUBLIC_API_BASE_URL 
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/chat`
-        : '/api/chat'; // Fallback to relative URL
-    
-    console.log(`Making API request to: ${apiUrl}`);
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `Server responded with status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return data.message;
-  } catch (error) {
-    console.error('Error making server-side request:', error);
-    throw error;
-  }
-}
-
-/**
- * Get activity recommendations using the server-side API endpoint
- */
-async function getExternalActivityRecommendations(
+async function getCompetitionRecommendations(
   profile: StudentProfile
-): Promise<ExternalActivityRecommendation[]> {
+): Promise<string[]> {
   try {
+    // Create a prompt specifically for finding competitions that match the student's profile
     const prompt = `
-      Given this student profile:
-      - Grade: ${profile.gradeLevel}
-      - Intended Major: ${profile.intendedMajor}
-      - Current Activities: ${profile.currentActivities}
-      - Interested In: ${profile.interestedActivities}
+      I need recommendations for academic competitions, olympiads, or challenges for a student with the following profile:
       
-      Search and recommend 3-5 specific, current, and relevant activities, programs, or opportunities that    
-      Format each recommendation as a structured JSON object with:
-      - name: string
-      - description: string
-      - relevance: string
-      - difficulty: "beginner" | "intermediate" | "advanced"
-      - timeCommitment: string
-      - skillsDeveloped: string[]
+      Grade: ${profile.gradeLevel}
+      Intended Major: ${profile.intendedMajor}
+      Current Activities: ${profile.currentActivities}
+      Interests: ${profile.interestedActivities}
       
-      Return a JSON object with a 'recommendations' array containing these activity objects.
-      Include specific, real programs where possible, with current information.
+      Please provide a list of 4-5 specific, currently active competitions that are well-aligned with this student's interests and grade level. 
+      For EACH competition, include:
+      1. The complete, accurate name of the competition
+      2. A brief explanation of what it involves
+      3. A direct website link in markdown format like this: [Competition Name](https://website-url.com)
+      
+      Format each recommendation as a separate bullet point with the link included.
     `;
 
-    try {
-      // Make a request to the server-side API
-      const responseContent = await makeServerSideRequest(prompt);
-      
-      // Parse the JSON response
-      // The API response might be in markdown format, so we try to extract JSON from it
-      const jsonMatch = responseContent.match(/```json\n([\s\S]*)\n```/) || 
-                        responseContent.match(/\{[\s\S]*\}/);
-                        
-      const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : responseContent;
-      
-      const parsedResponse = JSON.parse(jsonString);
-      
-      if (Array.isArray(parsedResponse.recommendations)) {
-        return parsedResponse.recommendations.map(rec => ({
-          name: rec.name || 'Recommended Activity',
-          description: rec.description || 'No description provided',
-          relevance: rec.relevance || 'Aligns with your interests and goals',
-          difficulty: rec.difficulty || 'intermediate',
-          timeCommitment: rec.timeCommitment || 'Varies',
-          skillsDeveloped: rec.skillsDeveloped || ['Leadership', 'Project Management']
-        }));
-      }
-      throw new Error('Invalid response format from API');
-    } catch (parseError) {
-      console.error('Error parsing API response:', parseError);
-      return generateMockActivityRecommendations(profile);
+    console.log('Fetching competition recommendations with web search');
+    
+    // Make the API call with web search enabled
+    const response = await getModelResponse(prompt, null, null, true);
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to generate competition recommendations');
     }
+
+    // Parse the response to extract competitions with links
+    // We'll look for markdown-formatted links in the response
+    const content = response.content || '';
+    
+    // Extract each bullet point containing a competition
+    const bulletPoints = content
+      .split(/\n+/)
+      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
+      .map(line => line.replace(/^[\s-*]+/, '').trim());
+    
+    if (bulletPoints.length === 0) {
+      // Fallback to looking for numbered lists
+      const numberedPoints = content
+        .split(/\n+/)
+        .filter(line => /^\d+\./.test(line.trim()))
+        .map(line => line.replace(/^\d+\.\s*/, '').trim());
+      
+      if (numberedPoints.length > 0) {
+        return numberedPoints;
+      }
+      
+      // If still no results, fallback to simple paragraph splitting
+      return content
+        .split(/\n\n+/)
+        .filter(para => para.includes('http') || para.includes('www') || para.includes('.org') || para.includes('.com'))
+        .map(para => para.trim());
+    }
+
+    return bulletPoints;
   } catch (error) {
-    console.error('Error getting external activity recommendations:', error);
-    return generateMockActivityRecommendations(profile);
+    console.error('Error parsing competition recommendations:', error);
+    // Fallback competitions if API call fails
+    return [
+      "International Science and Engineering Fair (ISEF) - [https://www.societyforscience.org/isef/](https://www.societyforscience.org/isef/)",
+      "The Breakthrough Junior Challenge - [https://breakthroughjuniorchallenge.org/](https://breakthroughjuniorchallenge.org/)",
+      "International Mathematical Olympiad (IMO) - [https://www.imo-official.org/](https://www.imo-official.org/)",
+      "DECA International Career Development Conference - [https://www.deca.org/](https://www.deca.org/)"
+    ];
   }
 }
 
@@ -988,17 +841,11 @@ export async function generateHybridRecommendations(
       .filter(line => line.includes('- '))
       .map(line => line.replace(/^[^-]*- /, '').trim());
 
-    // Get web-search based competition suggestions
-    let competitions: string[] = [];
-    try {
-      competitions = await getCompetitionRecommendations(profile);
-    } catch (error) {
-      console.error('Failed to generate competition recommendations', error);
-      competitions = getDefaultCompetitionsForMajor(profile.intendedMajor);
-    }
+    // Get competition recommendations with web search
+    const competitions = await getCompetitionRecommendations(profile);
     
-    // Get external activity recommendations
-    const recommendedActivities = await getExternalActivityRecommendations(profile);
+    // Get activity recommendations
+    const recommendedActivities = generateMockActivityRecommendations(profile);
     
     return {
       suggestedProjects: projectLines,
@@ -1017,7 +864,12 @@ export async function generateHybridRecommendations(
         'Develop an independent project related to your interests',
         'Create a portfolio showcasing your work and accomplishments'
       ],
-      suggestedCompetitions: getDefaultCompetitionsForMajor(profile.intendedMajor),
+      suggestedCompetitions: [
+        'International Science and Engineering Fair (ISEF) - [https://www.societyforscience.org/isef/](https://www.societyforscience.org/isef/)',
+        'The Breakthrough Junior Challenge - [https://breakthroughjuniorchallenge.org/](https://breakthroughjuniorchallenge.org/)',
+        'International Mathematical Olympiad (IMO) - [https://www.imo-official.org/](https://www.imo-official.org/)',
+        'DECA International Career Development Conference - [https://www.deca.org/](https://www.deca.org/)'
+      ],
       suggestedSkills: [
         'Develop strong communication and presentation skills',
         'Build technical skills relevant to your intended major',

@@ -35,7 +35,7 @@ export function createSystemPrompt(pdfContent?: string | null, profileContext?: 
   if (webAccessEnabled) {
     systemPrompt += `\n\n**IMPORTANT - WEB SEARCH:**
 
-You must search the web to find current and accurate information for this query.
+You have the ability to search the web to find current and accurate information for this query.
 Ensure you cite your sources and provide specific examples from current information.
 
 Key points to address:
@@ -44,7 +44,12 @@ Key points to address:
 3. Cite your sources with links where possible
 4. Ensure the information is up-to-date
 
-Always verify information through web search before responding.`;
+For competitions, scholarships and educational opportunities, include:
+- Complete and accurate name of the opportunity
+- Direct website links in markdown format: [Name](https://example.com)
+- Eligibility requirements
+- Upcoming deadlines where available
+- Brief description of what makes this opportunity valuable`;
   }
 
   if (profileContext) {
@@ -143,9 +148,35 @@ function getMockResponse(userMessage: string): ModelResponse {
   const messageHash = userMessage.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const responseIndex = messageHash % responses.length;
   
+  // Create a mock web search if the question seems to ask for competitions
+  if (userMessage.toLowerCase().includes('competition') || 
+      userMessage.toLowerCase().includes('olympiad') || 
+      userMessage.toLowerCase().includes('contest')) {
+    
+    return {
+      success: true,
+      content: `Based on your interests, here are some academic competitions to consider:\n\n1. [International Science and Engineering Fair (ISEF)](https://www.societyforscience.org/isef/) - The world's largest pre-college science competition.\n\n2. [The Breakthrough Junior Challenge](https://breakthroughjuniorchallenge.org/) - A global competition for students to inspire creative thinking about science.\n\n3. [International Mathematical Olympiad (IMO)](https://www.imo-official.org/) - The world championship mathematics competition for high school students.\n\n4. [DECA International Career Development Conference](https://www.deca.org/) - Business-focused competition for emerging leaders and entrepreneurs.`,
+      webSearchAttempted: true,
+      webSearchResults: [
+        {
+          title: "International Science and Engineering Fair",
+          url: "https://www.societyforscience.org/isef/",
+          snippet: "The International Science and Engineering Fair (ISEF) is the world's largest international pre-college science competition."
+        },
+        {
+          title: "The Breakthrough Junior Challenge",
+          url: "https://breakthroughjuniorchallenge.org/",
+          snippet: "An annual global competition for students to inspire creative thinking about science."
+        }
+      ],
+      model: "gpt-4.1-mini"
+    };
+  }
+  
   return {
     success: true,
-    content: responses[responseIndex]
+    content: responses[responseIndex],
+    webSearchAttempted: false
   };
 }
 
@@ -200,7 +231,7 @@ export async function callOpenAIAPI(
     // Prepare user message - only add search instruction if web search is enabled
     let enhancedUserMessage = userMessage;
     if (useWebSearch) {
-      const searchInstruction = "This is a question about educational activities and college admissions. Please search the web for current information before answering to ensure your response is accurate and up-to-date.";
+      const searchInstruction = "Please search the web for current information before answering to ensure your response is accurate and up-to-date. For competitions, scholarships, or educational opportunities, include specific details and direct website links in markdown format.";
       enhancedUserMessage = `${searchInstruction}\n\n${userMessage}`;
     }
     
@@ -217,7 +248,8 @@ export async function callOpenAIAPI(
           content: enhancedUserMessage
         }
       ],
-      temperature: 0.7
+      temperature: 0.7,
+      max_tokens: 1000
     };
     
     // Only add tools configuration when web search is enabled
@@ -245,13 +277,14 @@ export async function callOpenAIAPI(
     
     const headers = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-      // No OpenAI-Beta header needed for browsing tools
+      'Authorization': `Bearer ${apiKey}`,
+      'OpenAI-Beta': 'assistants=v1'  // Add this header for all requests to ensure latest API features
     };
     
     console.log('OpenAI request headers:', JSON.stringify({
       'Content-Type': headers['Content-Type'],
-      'Authorization': 'Bearer ***'
+      'Authorization': 'Bearer ***',
+      'OpenAI-Beta': headers['OpenAI-Beta']
     }));
     
     // Log the request body with special handling for tools to ensure they're properly serialized
@@ -312,6 +345,16 @@ export async function callOpenAIAPI(
       }
       
       console.error(`OpenAI API error (${response.status}):`, errorText.substring(0, 500));
+      
+      // If this is an unauthorized error (401), provide more guidance
+      if (response.status === 401) {
+        return {
+          success: false,
+          error: `Authentication error: ${errorText.substring(0, 200)}. Please check your OpenAI API key and ensure it has proper permissions.`,
+          webSearchAttempted: useWebSearch
+        };
+      }
+      
       return {
         success: false,
         error: `OpenAI API returned status ${response.status}: ${errorText.substring(0, 200)}${errorText.length > 200 ? '...' : ''}`,
