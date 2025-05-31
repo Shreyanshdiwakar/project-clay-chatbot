@@ -59,7 +59,7 @@ export function ThinkingIndicator({ steps, model = "GPT-4.1 Mini" }: ThinkingInd
             style={{ animationDelay: `${index * 0.2}s` }}
           >
             <div className="h-5 w-5 mt-0.5 relative flex items-center justify-center">
-              <div className="absolute inset-0 bg-indigo-500/20 rounded-full animate-ping" 
+              <div className="absolute inset-0 bg-indigo-500/30 rounded-full animate-ping" 
                    style={{animationDuration: '1.5s'}} />
               <div className="relative h-3 w-3 bg-indigo-500 rounded-full" />
             </div>
@@ -67,8 +67,8 @@ export function ThinkingIndicator({ steps, model = "GPT-4.1 Mini" }: ThinkingInd
               <p className="text-sm text-zinc-300">{step}</p>
               {index === visibleSteps.length - 1 && (
                 <div className="mt-2 space-y-1.5">
-                  <Skeleton className="h-2.5 w-[98%] bg-zinc-800/80" />
-                  <Skeleton className="h-2.5 w-[80%] bg-zinc-800/80" />
+                  <Skeleton className="h-2.5 w-[90%] bg-zinc-800/80" />
+                  <Skeleton className="h-2.5 w-[75%] bg-zinc-800/80" />
                   <Skeleton className="h-2.5 w-[60%] bg-zinc-800/80" />
                 </div>
               )}
