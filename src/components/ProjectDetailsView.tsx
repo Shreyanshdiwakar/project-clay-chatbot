@@ -53,7 +53,7 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
         DESCRIPTION: ${project.description}
         DIFFICULTY: ${project.complexity}
         TIMEFRAME: ${project.timeframe}
-        SKILLS DEVELOPED: ${project.skillsDeveloped.join(', ')}
+        SKILLS DEVELOPED: ${Array.isArray(project.skillsDeveloped) ? project.skillsDeveloped.join(', ') : ''}
         
         Please provide:
         
@@ -185,52 +185,94 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
   // Helper function to extract structured data from text
   const extractStructuredData = (text) => {
     const detailedPlan = extractSection(text, "DETAILED IMPLEMENTATION PLAN", "RESOURCES") || 
+      extractSection(text, "DETAILED PLAN", "RESOURCES") || 
       "Start by researching your topic thoroughly and developing a clear plan with specific goals and milestones.";
     
-    const resourceLinksText = extractSection(text, "RESOURCES", "SUCCESS TIPS");
+    const resourceLinksText = extractSection(text, "RESOURCES", "SUCCESS TIPS") || 
+                             extractSection(text, "RESOURCES", "TIPS");
     const resourceLinks = extractResourceLinks(resourceLinksText) || [
       { 
-        name: "Project Resources", 
-        url: "https://www.example.com/resources", 
-        description: "Helpful resources for your project" 
+        name: "Project Management Guide", 
+        url: "https://www.pmi.org/learning/library", 
+        description: "Comprehensive resources for project planning and execution" 
+      },
+      {
+        name: "Online Learning Platform",
+        url: "https://www.coursera.org/",
+        description: "Courses on skills relevant to your project"
+      },
+      {
+        name: "Research Methods Guide",
+        url: "https://www.scribbr.com/category/methodology/",
+        description: "Learn proper research techniques for your project"
       }
     ];
     
-    const tipsText = extractSection(text, "SUCCESS TIPS", "TIMELINE");
+    const tipsText = extractSection(text, "SUCCESS TIPS", "TIMELINE") || 
+                    extractSection(text, "TIPS", "TIMELINE");
     const tips = extractListItems(tipsText) || [
       "Plan your project carefully with realistic milestones",
       "Seek feedback from mentors regularly",
-      "Document your process thoroughly"
+      "Document your process thoroughly",
+      "Connect your project to your intended major or career goals",
+      "Balance ambition with realistic scope to ensure completion"
     ];
     
-    const timelineText = extractSection(text, "TIMELINE");
+    const timelineText = extractSection(text, "TIMELINE") || extractSection(text, "PROJECT TIMELINE");
+    let timeline = [];
+    
+    // First try to parse structured timeline sections
     const timelinePhases = timelineText.split(/Phase \d+:|Step \d+:|Stage \d+:|PHASE \d+:/g)
       .filter(phase => phase.trim().length > 0);
     
-    const timeline = timelinePhases.map(phaseText => {
-      const phaseLines = phaseText.split('\n').filter(line => line.trim().length > 0);
-      const phase = phaseLines[0]?.trim() || "Implementation Phase";
-      const tasks = phaseLines.slice(1)
-        .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'))
-        .map(line => line.replace(/^[•-]\s*/, '').trim());
-      
-      return { 
-        phase, 
-        tasks: tasks.length > 0 ? tasks : ["Plan and execute this phase of your project"]
-      };
-    });
-    
-    if (timeline.length === 0) {
-      timeline.push({
-        phase: "Planning & Research",
-        tasks: ["Research your topic thoroughly", "Create a detailed project plan", "Gather necessary resources"]
-      }, {
-        phase: "Implementation",
-        tasks: ["Execute your project according to plan", "Document your progress", "Adapt to challenges"]
-      }, {
-        phase: "Completion & Presentation",
-        tasks: ["Finalize your project", "Prepare presentation materials", "Share your results"]
+    if (timelinePhases.length > 0) {
+      timeline = timelinePhases.map(phaseText => {
+        const phaseLines = phaseText.split('\n').filter(line => line.trim().length > 0);
+        const phase = phaseLines[0]?.trim() || "Implementation Phase";
+        const tasks = phaseLines.slice(1)
+          .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().match(/^\d+\./))
+          .map(line => line.replace(/^[•-\d\.]+\s*/, '').trim());
+        
+        return { 
+          phase, 
+          tasks: tasks.length > 0 ? tasks : ["Plan and execute this phase of your project"]
+        };
       });
+    }
+    
+    // If no structured timeline found, look for paragraph breaks
+    if (timeline.length === 0 && timelineText) {
+      const paragraphs = timelineText.split(/\n\n+/)
+        .filter(p => p.trim().length > 0);
+      
+      if (paragraphs.length > 0) {
+        timeline = paragraphs.map((paragraph, i) => {
+          const lines = paragraph.split('\n');
+          const phase = lines[0]?.trim() || `Phase ${i+1}`;
+          const tasks = extractListItems(paragraph) || 
+                       [paragraph.replace(phase, '').trim() || "Complete tasks for this phase"];
+          
+          return { phase, tasks };
+        });
+      }
+    }
+    
+    // Provide default timeline if we couldn't extract one
+    if (timeline.length === 0) {
+      timeline = [
+        {
+          phase: "Planning & Research",
+          tasks: ["Research your topic thoroughly", "Create a detailed project plan", "Gather necessary resources"]
+        },
+        {
+          phase: "Implementation",
+          tasks: ["Execute your project according to plan", "Document your progress", "Adapt to challenges"]
+        },
+        {
+          phase: "Completion & Presentation",
+          tasks: ["Finalize your project", "Prepare presentation materials", "Share your results"]
+        }
+      ];
     }
     
     return { detailedPlan, resourceLinks, tips, timeline };
@@ -238,6 +280,8 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
   
   // Helper function to extract a section from text
   const extractSection = (text, startMarker, endMarker) => {
+    if (!text || typeof text !== 'string') return "";
+    
     const startIdx = text.indexOf(startMarker);
     if (startIdx === -1) return "";
     
@@ -253,17 +297,17 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
   
   // Helper function to extract list items
   const extractListItems = (text) => {
-    if (!text) return [];
+    if (!text || typeof text !== 'string') return [];
     
     return text
       .split('\n')
       .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().match(/^\d+\./))
-      .map(line => line.replace(/^[•-]\d+\.\s*/, '').trim());
+      .map(line => line.replace(/^[•-\d\.]+\s*/, '').trim());
   };
   
   // Helper function to extract resource links
   const extractResourceLinks = (text) => {
-    if (!text) return [];
+    if (!text || typeof text !== 'string') return [];
     
     const resources = [];
     const lines = text.split('\n').filter(line => line.trim().length > 0);

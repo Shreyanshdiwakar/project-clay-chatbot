@@ -83,7 +83,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
       
       // Parse the AI response - it should be in JSON format
       try {
-        // First, try to find JSON object in the response
+        // Try to find JSON object in the response
         const jsonPattern = /```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*"applicationProcess"[\s\S]*?\})/;
         const jsonMatch = response.content.match(jsonPattern);
         
@@ -203,12 +203,12 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
       relatedOpportunities: extractOpportunities(text) || [
         {
           name: "Similar Competition",
-          url: "https://www.example.org/similar-competition",
+          url: "https://www.google.com/search?q=" + encodeURIComponent(competition.name + " similar competitions"),
           description: "Another competition in this field"
         },
         {
           name: "Summer Program",
-          url: "https://www.example.org/summer-program",
+          url: "https://www.google.com/search?q=" + encodeURIComponent(competition.name + " related summer programs"),
           description: "Build skills relevant to this competition"
         }
       ]
@@ -217,6 +217,8 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
   
   // Helper function to extract a section from text
   const extractSection = (text, startMarker, endMarker) => {
+    if (!text || typeof text !== 'string') return "";
+    
     const startIdx = text.indexOf(startMarker);
     if (startIdx === -1) return "";
     
@@ -230,7 +232,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
     return text.substring(effectiveStartIdx, endIdx).trim();
   };
   
-  // Helper function to extract bullet points
+  // Helper function to extract list items
   const extractListItems = (text, startMarker, endMarker) => {
     const section = extractSection(text, startMarker, endMarker);
     if (!section) return [];
@@ -238,7 +240,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
     return section
       .split('\n')
       .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().match(/^\d+\./))
-      .map(line => line.replace(/^[•-]\d+\.\s*/, '').trim());
+      .map(line => line.replace(/^[•-\d\.]+\s*/, '').trim());
   };
   
   // Helper function to extract opportunities
