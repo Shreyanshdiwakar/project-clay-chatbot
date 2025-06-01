@@ -20,3 +20,7 @@ export interface EnhancedRecommendationResponse extends RecommendationResponse {
     skillsDeveloped: string[];
   }[];
 }
+
+export interface MonthlyTimelineResponse {
+  [month: string]: string[];
+}

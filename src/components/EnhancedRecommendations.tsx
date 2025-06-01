@@ -83,33 +83,58 @@ export function EnhancedRecommendations({
   });
   
   // Prepare project data
-  const projects: EnhancedProjectRecommendation[] = recommendations.suggestedProjects.map((proj, idx) => {
-    // Generate a mock project with realistic data
-    return {
-      name: proj,
-      description: `A project to develop your skills in ${recommendations.suggestedSkills[idx % recommendations.suggestedSkills.length]}`,
-      complexity: idx % 3 === 0 ? 'beginner' : idx % 3 === 1 ? 'intermediate' : 'advanced',
-      timeframe: idx % 3 === 0 ? '2-4 weeks' : idx % 3 === 1 ? '1-2 months' : '2-3 months',
-      skillsRequired: [recommendations.suggestedSkills[idx % recommendations.suggestedSkills.length]],
-      skillsDeveloped: [
-        recommendations.suggestedSkills[idx % recommendations.suggestedSkills.length],
-        recommendations.suggestedSkills[(idx + 1) % recommendations.suggestedSkills.length]
-      ],
-      steps: [
-        'Research the topic and create a plan',
-        'Gather necessary resources and materials',
-        'Execute your project in stages',
-        'Document your progress and results',
-        'Present your work and get feedback'
-      ],
-      resources: [
-        { name: 'Online Tutorial', url: 'https://www.example.com/tutorial' },
-        { name: 'Reference Guide', url: 'https://www.example.com/guide' }
-      ],
-      category: ['Academic', 'Personal Development'],
-      matchScore: 75 + (idx * 5) % 25
-    };
-  });
+  const projects: EnhancedProjectRecommendation[] = hasEnhancedData 
+    ? recommendations.recommendedActivities.map((proj, idx) => {
+        // Convert from recommendedActivities format to EnhancedProjectRecommendation
+        return {
+          name: proj.name,
+          description: proj.description,
+          complexity: proj.difficulty,
+          timeframe: proj.timeCommitment,
+          skillsRequired: [proj.skillsDeveloped[0] || 'General skills'],
+          skillsDeveloped: proj.skillsDeveloped,
+          steps: [
+            'Research the topic and create a plan',
+            'Gather necessary resources and materials',
+            'Execute your project in stages',
+            'Document your progress and results',
+            'Present your work and get feedback'
+          ],
+          resources: [
+            { name: 'Online Tutorial', url: 'https://www.example.com/tutorial' },
+            { name: 'Reference Guide', url: 'https://www.example.com/guide' }
+          ],
+          category: ['Academic', 'Personal Development'],
+          matchScore: 75 + (idx * 5) % 25
+        };
+      })
+    : recommendations.suggestedProjects.map((proj, idx) => {
+        // Generate a mock project with realistic data
+        return {
+          name: proj,
+          description: `A project to develop your skills in ${recommendations.suggestedSkills[idx % recommendations.suggestedSkills.length]}`,
+          complexity: idx % 3 === 0 ? 'beginner' : idx % 3 === 1 ? 'intermediate' : 'advanced',
+          timeframe: idx % 3 === 0 ? '2-4 weeks' : idx % 3 === 1 ? '1-2 months' : '2-3 months',
+          skillsRequired: [recommendations.suggestedSkills[idx % recommendations.suggestedSkills.length]],
+          skillsDeveloped: [
+            recommendations.suggestedSkills[idx % recommendations.suggestedSkills.length],
+            recommendations.suggestedSkills[(idx + 1) % recommendations.suggestedSkills.length]
+          ],
+          steps: [
+            'Research the topic and create a plan',
+            'Gather necessary resources and materials',
+            'Execute your project in stages',
+            'Document your progress and results',
+            'Present your work and get feedback'
+          ],
+          resources: [
+            { name: 'Online Tutorial', url: 'https://www.example.com/tutorial' },
+            { name: 'Reference Guide', url: 'https://www.example.com/guide' }
+          ],
+          category: ['Academic', 'Personal Development'],
+          matchScore: 75 + (idx * 5) % 25
+        };
+      });
   
   // Handle feedback submission
   const handleFeedbackSubmit = (feedback: any) => {
@@ -134,6 +159,20 @@ export function EnhancedRecommendations({
   const allCategories = Array.from(new Set(
     competitions.flatMap(c => c.category)
   )).sort();
+  
+  // Parse timeline to get monthly breakdown
+  const monthlyTimeline: Record<string, string[]> = {};
+  recommendations.timeline.forEach(item => {
+    const parts = item.split(':');
+    if (parts.length >= 2) {
+      const month = parts[0].trim();
+      const activity = parts.slice(1).join(':').trim();
+      if (!monthlyTimeline[month]) {
+        monthlyTimeline[month] = [];
+      }
+      monthlyTimeline[month].push(activity);
+    }
+  });
   
   return (
     <div className="space-y-6">
@@ -682,44 +721,98 @@ export function EnhancedRecommendations({
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {recommendations.timeline.map((phase, idx) => (
-                  <div key={idx} className="relative pl-8 pb-6">
-                    {/* Timeline connector */}
-                    {idx < recommendations.timeline.length - 1 && (
-                      <div className="absolute left-3 top-3 bottom-0 w-0.5 bg-zinc-700" />
-                    )}
-                    
-                    {/* Timeline node */}
-                    <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center">
-                      <Clock className="h-3.5 w-3.5" />
-                    </div>
-                    
-                    <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-                      <h3 className="text-zinc-200 font-medium mb-2">
-                        {idx === 0 ? 'Short-term (Next 1-3 months)' :
-                         idx === 1 ? 'Medium-term (Next 3-6 months)' :
-                         idx === 2 ? 'Long-term (Next 6-12 months)' :
-                         'Future Planning'}
-                      </h3>
-                      <p className="text-zinc-300">{phase}</p>
+                {/* Process timeline entries in order by month */}
+                {Object.entries(monthlyTimeline).length > 0 ? (
+                  Object.entries(monthlyTimeline)
+                    .sort(([monthA], [monthB]) => {
+                      const months = [
+                        'September', 'October', 'November', 'December', 
+                        'January', 'February', 'March', 'April', 
+                        'May', 'June', 'July', 'August'
+                      ];
+                      return months.indexOf(monthA) - months.indexOf(monthB);
+                    })
+                    .map(([month, activities], idx) => (
+                      <div key={idx} className="relative pl-8 pb-6">
+                        {/* Timeline connector */}
+                        {idx < Object.keys(monthlyTimeline).length - 1 && (
+                          <div className="absolute left-3 top-3 bottom-0 w-0.5 bg-zinc-700" />
+                        )}
+                        
+                        {/* Timeline node */}
+                        <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center">
+                          <Clock className="h-3.5 w-3.5" />
+                        </div>
+                        
+                        <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+                          <h3 className="text-zinc-200 font-medium mb-2">{month}</h3>
+                          <ul className="space-y-2">
+                            {activities.map((activity, actIdx) => (
+                              <li key={actIdx} className="text-zinc-300 flex gap-2 items-start">
+                                <span className="text-green-400 mt-1">•</span>
+                                <span>{activity}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          
+                          <div className="flex justify-end mt-3">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="border-zinc-700 text-zinc-300 text-xs h-7"
+                              onClick={() => setActiveFeedback({
+                                id: `timeline-${idx}`,
+                                type: 'timeline',
+                                name: `${month} Timeline`
+                              })}
+                            >
+                              Rate This
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  // Process standard timeline entries if no month breakdown
+                  recommendations.timeline.map((phase, idx) => (
+                    <div key={idx} className="relative pl-8 pb-6">
+                      {/* Timeline connector */}
+                      {idx < recommendations.timeline.length - 1 && (
+                        <div className="absolute left-3 top-3 bottom-0 w-0.5 bg-zinc-700" />
+                      )}
                       
-                      <div className="flex justify-end mt-3">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="border-zinc-700 text-zinc-300 text-xs h-7"
-                          onClick={() => setActiveFeedback({
-                            id: `timeline-${idx}`,
-                            type: 'timeline',
-                            name: `Timeline Phase ${idx + 1}`
-                          })}
-                        >
-                          Rate This
-                        </Button>
+                      {/* Timeline node */}
+                      <div className="absolute left-0 top-0 w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center">
+                        <Clock className="h-3.5 w-3.5" />
+                      </div>
+                      
+                      <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+                        <h3 className="text-zinc-200 font-medium mb-2">
+                          {idx === 0 ? 'Short-term (Next 1-3 months)' :
+                          idx === 1 ? 'Medium-term (Next 3-6 months)' :
+                          idx === 2 ? 'Long-term (Next 6-12 months)' :
+                          'Future Planning'}
+                        </h3>
+                        <p className="text-zinc-300">{phase}</p>
+                        
+                        <div className="flex justify-end mt-3">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="border-zinc-700 text-zinc-300 text-xs h-7"
+                            onClick={() => setActiveFeedback({
+                              id: `timeline-${idx}`,
+                              type: 'timeline',
+                              name: `Timeline Phase ${idx + 1}`
+                            })}
+                          >
+                            Rate This
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

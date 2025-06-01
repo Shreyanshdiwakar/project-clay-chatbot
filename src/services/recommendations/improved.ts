@@ -12,7 +12,8 @@ import { getModelResponse } from '@/services/openai/service';
 import { 
   assessUserSkillLevel,
   createTieredProjectRecommendations,
-  enhanceCompetitionRecommendations
+  enhanceCompetitionRecommendations,
+  generateMonthlyTimeline
 } from './analysis';
 
 // Track previous recommendations to prevent repetition
@@ -75,13 +76,26 @@ export async function generateImprovedRecommendations(
     // 8. Generate skill recommendations
     const skillRecommendations = generateSkillRecommendations(profile, skillAssessment);
     
-    // 9. Generate timeline
-    let timeline: string[] = [];
-    if (templates.timeline) {
-      timeline = await generateEnhancedTimeline(templates.timeline, profile);
-    }
+    // 9. Generate monthly timeline
+    const monthlyTimeline = generateMonthlyTimeline(profile);
     
-    // 10. Update user history
+    // 10. Flatten monthly timeline into a list of strings for compatibility
+    const timeline = Object.entries(monthlyTimeline)
+      .sort(([monthA], [monthB]) => {
+        const months = [
+          'September', 'October', 'November', 'December', 
+          'January', 'February', 'March', 'April', 
+          'May', 'June', 'July', 'August'
+        ];
+        return months.indexOf(monthA) - months.indexOf(monthB);
+      })
+      .map(([month, activities]) => {
+        if (activities.length === 0) return '';
+        return `${month}: ${activities[0]}${activities.length > 1 ? ` and ${activities.length - 1} more activities` : ''}`;
+      })
+      .filter(item => item !== '');
+    
+    // 11. Update user history
     userHistory.viewedCompetitions = [
       ...userHistory.viewedCompetitions,
       ...enhancedCompetitions.map(c => c.name)
@@ -93,7 +107,7 @@ export async function generateImprovedRecommendations(
     userHistory.timestamp = Date.now();
     userRecommendationHistory[userId] = userHistory;
     
-    // 11. Construct the enhanced recommendation response
+    // 12. Construct the enhanced recommendation response
     return {
       suggestedProjects: projectRecommendations.map(p => p.name),
       suggestedCompetitions: enhancedCompetitions.map(c => 
@@ -118,22 +132,38 @@ export async function generateImprovedRecommendations(
     return {
       suggestedProjects: [
         'Develop a personal project showcasing your interests and skills',
-        'Create a digital portfolio of your academic and extracurricular work'
+        'Create a digital portfolio of your academic and extracurricular work',
+        'Start a research project related to your intended major',
+        'Design and implement a community service initiative',
+        'Develop a personal brand and online presence'
       ],
       suggestedCompetitions: [
         'Research competitions specific to your field of interest',
-        'Look for local scholarship opportunities aligned with your goals'
+        'Look for local scholarship opportunities aligned with your goals',
+        'Find subject-specific olympiads or academic contests',
+        'Search for innovation or entrepreneurship challenges',
+        'Identify essay or creative contests related to your major'
       ],
       suggestedSkills: [
         'Critical thinking and problem-solving',
         'Effective written and verbal communication',
-        'Time management and organization'
+        'Time management and organization',
+        'Leadership and team collaboration',
+        'Research and analytical abilities'
       ],
       timeline: [
-        'Set specific academic and extracurricular goals for this semester',
-        'Research colleges and scholarship opportunities',
-        'Prepare for standardized tests if applicable',
-        'Develop meaningful relationships with potential recommenders'
+        'September: Set specific academic and extracurricular goals for this semester',
+        'October: Research colleges and scholarship opportunities',
+        'November: Prepare for standardized tests if applicable',
+        'December: Reflect on semester accomplishments and plan for improvement',
+        'January: Update your resume and activity list',
+        'February: Develop relationships with potential recommenders',
+        'March: Plan meaningful summer activities',
+        'April: Focus on academic excellence and leadership development',
+        'May: Prepare for final exams and standardized tests',
+        'June: Begin summer activities with specific goals',
+        'July: Visit colleges and refine your school list',
+        'August: Prepare for the upcoming academic year'
       ],
       profileAnalysis: `Focus on developing experiences that showcase your interest in ${profile.intendedMajor || "your intended field"}. Seek opportunities that allow you to demonstrate both depth of commitment and breadth of skills.`,
       recommendedActivities: []
@@ -178,9 +208,14 @@ async function generateEnhancedProfileAnalysis(
       Make the analysis personalized, constructive, and actionable. Limit to 3-4 paragraphs.
     `;
 
-    // In a real implementation, this would call the API
-    // For now, generate a structured analysis based on the profile
+    // Make the API call for a personalized analysis
+    const response = await getModelResponse(prompt, null, null, false);
     
+    if (response.success && response.content) {
+      return response.content;
+    }
+    
+    // Fallback if API call fails
     const major = profile.intendedMajor || "undecided field";
     const grade = profile.gradeLevel || "current grade";
     const gradeCategory = getGradeCategory(grade);
@@ -247,6 +282,7 @@ async function getCompetitionRecommendations(
       2. Represent different categories (STEM, humanities, leadership, etc.)
       3. Have varying levels of competitiveness
       4. Are well-aligned with this student's interests and grade level
+      5. Include at least 2 competitions that directly relate to ${profile.intendedMajor}
       
       For EACH competition, include:
       1. The complete, accurate name of the competition
@@ -259,54 +295,138 @@ async function getCompetitionRecommendations(
       Format each recommendation as a separate bullet point with the link included.
     `;
 
-    console.log('Fetching diverse competition recommendations with web search');
-    
-    // Make the API call with web search enabled
+    // Make the API call with web search enabled to get current competition information
     const response = await getModelResponse(prompt, null, null, true);
     
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to generate competition recommendations');
-    }
-
-    // Parse the response to extract competitions with links
-    const content = response.content || '';
-    
-    // Extract each bullet point containing a competition
-    const bulletPoints = content
-      .split(/\n+/)
-      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-      .map(line => line.replace(/^[\s-*]+/, '').trim());
-    
-    if (bulletPoints.length === 0) {
-      // Fallback to looking for numbered lists
+    if (response.success && response.content) {
+      // Parse the response to extract competitions with links
+      const content = response.content;
+      
+      // Extract each bullet point containing a competition
+      const bulletPoints = content
+        .split(/\n+/)
+        .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
+        .map(line => line.replace(/^[\s-*]+/, '').trim());
+      
+      if (bulletPoints.length >= 5) {
+        return bulletPoints;
+      }
+      
+      // If we don't have enough bullet points, look for numbered lists
       const numberedPoints = content
         .split(/\n+/)
         .filter(line => /^\d+\./.test(line.trim()))
         .map(line => line.replace(/^\d+\.\s*/, '').trim());
       
-      if (numberedPoints.length > 0) {
+      if (numberedPoints.length >= 5) {
         return numberedPoints;
       }
       
-      // If still no results, fallback to simple paragraph splitting
-      return content
+      // If we still don't have enough, extract paragraphs containing links
+      const paragraphs = content
         .split(/\n\n+/)
         .filter(para => para.includes('http') || para.includes('www') || para.includes('.org') || para.includes('.com'))
         .map(para => para.trim());
+      
+      if (paragraphs.length >= 5) {
+        return paragraphs;
+      }
     }
-
-    return bulletPoints;
+    
+    // If we still don't have good results, fall back to major-specific competition templates
+    return getMajorSpecificCompetitions(profile.intendedMajor);
   } catch (error) {
-    console.error('Error parsing competition recommendations:', error);
-    // Fallback competitions
+    console.error('Error generating competition recommendations:', error);
+    // Fallback to major-specific competitions if the API call fails
+    return getMajorSpecificCompetitions(profile.intendedMajor);
+  }
+}
+
+/**
+ * Provide major-specific competition recommendations as a fallback
+ */
+function getMajorSpecificCompetitions(major: string): string[] {
+  const lowerMajor = major.toLowerCase();
+  
+  // Business/Economics competitions
+  if (lowerMajor.includes('business') || lowerMajor.includes('econ') || 
+      lowerMajor.includes('financ') || lowerMajor.includes('account')) {
     return [
-      "FIRST Robotics Competition - [https://www.firstinspires.org/robotics/frc](https://www.firstinspires.org/robotics/frc) - Teams design, build, and program industrial-size robots for a challenging field game.",
-      "National History Day - [https://www.nhd.org/](https://www.nhd.org/) - Conduct historical research and present findings in various formats like exhibits, papers, or documentaries.",
-      "Conrad Challenge - [https://www.conradchallenge.org/](https://www.conradchallenge.org/) - Develop innovative solutions to global challenges in categories like energy, health, and sustainability.",
-      "Scholastic Art & Writing Awards - [https://www.artandwriting.org/](https://www.artandwriting.org/) - Submit creative work in various categories for recognition and scholarships.",
-      "Diamond Challenge - [https://diamondchallenge.org/](https://diamondchallenge.org/) - Create business concepts or social innovation projects for prizes and recognition."
+      "[DECA International Career Development Conference](https://www.deca.org/high-school-programs/) - Business-focused competition for emerging leaders and entrepreneurs.",
+      "[National Economics Challenge](https://www.econedlink.org/national-economics-challenge/) - Tests knowledge of economic principles and current events in economics.",
+      "[Diamond Challenge](https://diamondchallenge.org/) - Global entrepreneurship competition for high school students.",
+      "[FBLA National Leadership Conference](https://www.fbla-pbl.org/conferences/nlc/) - Competition testing business knowledge, skills, and leadership abilities.",
+      "[Wharton Global High School Investment Competition](https://globalyouth.wharton.upenn.edu/investment-competition/) - Online investment simulation for high school students."
     ];
   }
+  
+  // Computer Science/Engineering competitions
+  if (lowerMajor.includes('comput') || lowerMajor.includes('program') || 
+      lowerMajor.includes('engineer') || lowerMajor.includes('tech')) {
+    return [
+      "[FIRST Robotics Competition](https://www.firstinspires.org/robotics/frc) - Team-based robotics programs that build science, engineering, and technology skills.",
+      "[Technovation Challenge](https://technovationchallenge.org/) - Technology entrepreneurship program for young women.",
+      "[Congressional App Challenge](https://www.congressionalappchallenge.us/) - Competition encouraging students to learn code and create their own apps.",
+      "[Regeneron International Science and Engineering Fair (ISEF)](https://www.societyforscience.org/isef/) - World's largest pre-college science competition.",
+      "[American Computer Science League](https://www.acsl.org/) - Computer science and programming contest for K-12 students."
+    ];
+  }
+  
+  // Science competitions
+  if (lowerMajor.includes('science') || lowerMajor.includes('bio') || 
+      lowerMajor.includes('chem') || lowerMajor.includes('physic')) {
+    return [
+      "[Regeneron International Science and Engineering Fair (ISEF)](https://www.societyforscience.org/isef/) - World's largest pre-college science competition.",
+      "[Science Olympiad](https://www.soinc.org/) - Team competition testing knowledge in various science disciplines.",
+      "[Junior Science and Humanities Symposium](https://www.jshs.org/) - Promotes original research in sciences, engineering, and mathematics.",
+      "[International Biology Olympiad](https://www.ibo-info.org/) - Prestigious competition for high school students excelling in biology.",
+      "[Chemistry Olympiad](https://www.acs.org/education/students/highschool/olympiad.html) - Competition testing chemistry knowledge with potential for international competition."
+    ];
+  }
+  
+  // Arts competitions
+  if (lowerMajor.includes('art') || lowerMajor.includes('music') || 
+      lowerMajor.includes('drama') || lowerMajor.includes('film') || lowerMajor.includes('design')) {
+    return [
+      "[Scholastic Art & Writing Awards](https://www.artandwriting.org/) - Nation's longest-running recognition program for creative teens.",
+      "[YoungArts](https://youngarts.org/apply/) - Application-based award for talented artists in visual, literary, design and performing arts.",
+      "[National YoungArts Foundation Competition](https://youngarts.org/competition/) - Prestigious arts competition for emerging artists.",
+      "[Photographer's Forum College and High School Photography Contest](https://pfmagazine.com/photography-contest/) - Competition for emerging photographers.",
+      "[National HighSchool Music Institute](https://music.northwestern.edu/nhsmi) - Summer program for outstanding high school musicians."
+    ];
+  }
+  
+  // Humanities competitions
+  if (lowerMajor.includes('english') || lowerMajor.includes('histor') || 
+      lowerMajor.includes('polit') || lowerMajor.includes('philos') || lowerMajor.includes('psycho')) {
+    return [
+      "[National History Day](https://www.nhd.org/) - Year-long research-based program for students to explore historical topics.",
+      "[John Locke Essay Competition](https://www.johnlockeinstitute.com/essay-competition) - Philosophy essay competition for high school students.",
+      "[The Concord Review](https://www.tcr.org/) - Journal publishing exemplary high school history essays.",
+      "[American Foreign Policy Council Essay Contest](https://www.afpc.org/about/internships-fellowships) - Essay competition on foreign policy topics.",
+      "[Profile in Courage Essay Contest](https://www.jfklibrary.org/learn/education/profile-in-courage-essay-contest) - Essay contest on political courage based on Kennedy's book."
+    ];
+  }
+  
+  // Mathematics competitions
+  if (lowerMajor.includes('math')) {
+    return [
+      "[International Mathematical Olympiad](https://www.imo-official.org/) - World championship mathematics competition for high school students.",
+      "[American Mathematics Competitions](https://www.maa.org/math-competitions) - Series of competitions testing mathematical problem-solving skills.",
+      "[MathCounts](https://www.mathcounts.org/) - National math coaching and competition program.",
+      "[Harvard-MIT Mathematics Tournament](https://www.hmmt.org/) - Student-organized competition held at MIT and Harvard.",
+      "[Mu Alpha Theta](https://mualphatheta.org/competitions) - National high school and two-year college mathematics honor society with competitions."
+    ];
+  }
+  
+  // General academic competitions (default)
+  return [
+    "[Regeneron Science Talent Search](https://www.societyforscience.org/regeneron-sts/) - The nation's most prestigious science research competition for high school seniors.",
+    "[The Breakthrough Junior Challenge](https://breakthroughjuniorchallenge.org/) - Global competition for students to inspire creative thinking about science.",
+    "[National Speech and Debate Tournament](https://www.speechanddebate.org/nationals/) - Premier national speech and debate competition.",
+    "[Model United Nations](https://www.nmun.org/) - Authentic simulation of the UN General Assembly and other multilateral bodies.",
+    "[Quiz Bowl](https://www.naqt.com/about-quiz-bowl.html) - Academic competition that tests knowledge across all academic disciplines."
+  ];
 }
 
 /**
@@ -324,114 +444,137 @@ function generateSkillRecommendations(
   const coreSkills = [
     "Critical thinking and analytical reasoning",
     "Written and verbal communication",
-    "Collaboration and teamwork"
+    "Collaboration and teamwork",
+    "Time management and organization",
+    "Leadership and initiative"
   ];
   
   // Major-specific skills
   const majorSpecificSkills: string[] = [];
   
-  if (major.includes('comput') || major.includes('tech') || major.includes('engineer')) {
+  // Business/Economics skills
+  if (major.includes('business') || major.includes('econ') || 
+      major.includes('financ') || major.includes('account')) {
+    if (skillLevels.analytical === 'beginner') {
+      majorSpecificSkills.push("Financial literacy and basic accounting principles");
+      majorSpecificSkills.push("Introduction to business models and strategies");
+    } else if (skillLevels.analytical === 'intermediate') {
+      majorSpecificSkills.push("Financial analysis and business planning");
+      majorSpecificSkills.push("Market research and competitive analysis");
+    } else {
+      majorSpecificSkills.push("Advanced financial modeling and investment analysis");
+      majorSpecificSkills.push("Strategic planning and organizational development");
+    }
+    
+    if (skillLevels.leadership === 'beginner') {
+      majorSpecificSkills.push("Fundamentals of team dynamics and collaboration");
+    } else if (skillLevels.leadership === 'intermediate') {
+      majorSpecificSkills.push("Project management and organizational leadership");
+    } else {
+      majorSpecificSkills.push("Executive decision-making and organizational strategy");
+    }
+  }
+  
+  // Computer Science/Engineering skills
+  else if (major.includes('comput') || major.includes('tech') || 
+           major.includes('engineer') || major.includes('program')) {
     if (skillLevels.technical === 'beginner') {
-      majorSpecificSkills.push("Fundamentals of programming with Python or JavaScript");
-      majorSpecificSkills.push("Basic web development (HTML/CSS)");
+      majorSpecificSkills.push("Programming fundamentals in Python or JavaScript");
+      majorSpecificSkills.push("Basic web development with HTML/CSS");
     } else if (skillLevels.technical === 'intermediate') {
       majorSpecificSkills.push("Full-stack development with databases and APIs");
-      majorSpecificSkills.push("Version control and collaborative coding practices");
+      majorSpecificSkills.push("Software engineering principles and best practices");
     } else {
       majorSpecificSkills.push("Advanced algorithms and data structures");
       majorSpecificSkills.push("DevOps and deployment architecture");
     }
-  } else if (major.includes('business') || major.includes('econ')) {
-    if (skillLevels.leadership === 'beginner') {
-      majorSpecificSkills.push("Fundamentals of financial literacy and business models");
-      majorSpecificSkills.push("Basic market research and analysis techniques");
-    } else if (skillLevels.leadership === 'intermediate') {
-      majorSpecificSkills.push("Project management and organizational leadership");
-      majorSpecificSkills.push("Financial analysis and business planning");
+    
+    if (skillLevels.analytical === 'beginner') {
+      majorSpecificSkills.push("Logical problem-solving and debugging skills");
+    } else if (skillLevels.analytical === 'intermediate') {
+      majorSpecificSkills.push("System design and architectural planning");
     } else {
-      majorSpecificSkills.push("Strategic planning and organizational development");
-      majorSpecificSkills.push("Advanced financial modeling and investment analysis");
+      majorSpecificSkills.push("Performance optimization and advanced debugging");
     }
-  } else if (major.includes('science') || major.includes('bio') || major.includes('chem')) {
+  }
+  
+  // Science skills
+  else if (major.includes('science') || major.includes('bio') || 
+           major.includes('chem') || major.includes('physics')) {
     if (skillLevels.research === 'beginner') {
-      majorSpecificSkills.push("Scientific method and basic research design");
+      majorSpecificSkills.push("Scientific method and experimental design basics");
       majorSpecificSkills.push("Laboratory safety and basic techniques");
     } else if (skillLevels.research === 'intermediate') {
-      majorSpecificSkills.push("Experimental design and hypothesis testing");
-      majorSpecificSkills.push("Scientific data collection and statistical analysis");
+      majorSpecificSkills.push("Advanced research methodologies and data collection");
+      majorSpecificSkills.push("Statistical analysis and experimental validation");
     } else {
-      majorSpecificSkills.push("Advanced research methodologies in your field");
-      majorSpecificSkills.push("Scientific paper writing and publication processes");
+      majorSpecificSkills.push("Specialized laboratory techniques relevant to your field");
+      majorSpecificSkills.push("Scientific paper writing and publication process");
+    }
+    
+    if (skillLevels.communication === 'beginner') {
+      majorSpecificSkills.push("Scientific communication fundamentals");
+    } else if (skillLevels.communication === 'intermediate') {
+      majorSpecificSkills.push("Advanced scientific presentation and visualization");
+    } else {
+      majorSpecificSkills.push("Translating complex scientific concepts for different audiences");
     }
   }
   
-  // Combine skills, prioritizing major-specific ones
-  const recommendedSkills = [...majorSpecificSkills, ...coreSkills];
-  
-  // Add grade-specific skills
-  const grade = profile.gradeLevel.toLowerCase();
-  if (grade.includes('11') || grade.includes('jun')) {
-    recommendedSkills.push("Standardized test preparation strategies");
-  } else if (grade.includes('12') || grade.includes('sen')) {
-    recommendedSkills.push("College application essay writing");
-    recommendedSkills.push("Interview preparation and professional communication");
+  // Arts skills
+  else if (major.includes('art') || major.includes('music') || 
+           major.includes('drama') || major.includes('film') || 
+           major.includes('design') || major.includes('creative')) {
+    if (skillLevels.communication === 'beginner') {
+      majorSpecificSkills.push("Fundamentals of your chosen artistic medium");
+      majorSpecificSkills.push("Basic portfolio development and presentation");
+    } else if (skillLevels.communication === 'intermediate') {
+      majorSpecificSkills.push("Advanced techniques in your artistic specialty");
+      majorSpecificSkills.push("Portfolio curation and artistic statement development");
+    } else {
+      majorSpecificSkills.push("Professional-level creation and production");
+      majorSpecificSkills.push("Grant writing and artistic proposal development");
+    }
+    
+    majorSpecificSkills.push("Understanding the business aspects of creative industries");
   }
   
-  // Return a subset to avoid overwhelming the student
-  return recommendedSkills.slice(0, 5);
-}
-
-/**
- * Generate enhanced timeline with more specific guidance
- */
-async function generateEnhancedTimeline(
-  timelineTemplate: any,
-  profile: StudentProfile
-): Promise<string[]> {
-  // Extract key information
-  const grade = profile.gradeLevel.toLowerCase();
-  let timelinePoints: string[] = [];
-  
-  // Grade-specific timeline points
-  if (grade.includes('9') || grade.includes('fresh')) {
-    timelinePoints = [
-      "Fall: Explore 3-4 clubs or activities related to your interests to find your best fits",
-      "Winter: Establish strong study habits and aim for excellent grades in core courses",
-      "Spring: Begin research on summer programs that align with your interests",
-      "Summer: Participate in a structured program or independent project to develop key skills"
-    ];
-  } else if (grade.includes('10') || grade.includes('soph')) {
-    timelinePoints = [
-      "Fall: Take the PSAT and begin standardized test preparation",
-      "Winter: Research and plan to take rigorous courses for junior year",
-      "Spring: Seek leadership positions in 1-2 key extracurricular activities",
-      "Summer: Pursue an internship, research opportunity, or advanced program in your field"
-    ];
-  } else if (grade.includes('11') || grade.includes('jun')) {
-    timelinePoints = [
-      "Fall: Focus on achieving strong grades in challenging courses while preparing for standardized tests",
-      "Winter: Research colleges and develop a preliminary list of schools to apply to",
-      "Spring: Visit colleges, take SAT/ACT, and begin thinking about potential recommenders",
-      "Summer: Work on a significant project related to your major and draft college essays"
-    ];
-  } else if (grade.includes('12') || grade.includes('sen')) {
-    timelinePoints = [
-      "Fall: Submit college applications, focusing on early deadlines for priority consideration",
-      "Winter: Complete remaining applications and apply for scholarships",
-      "Spring: Compare admission offers and financial aid packages to make your final decision",
-      "Summer: Prepare for college transition while maintaining connections with mentors"
-    ];
-  } else {
-    // Default timeline if grade level is unclear
-    timelinePoints = [
-      "Research colleges that offer strong programs in your field of interest",
-      "Develop a challenging academic schedule that demonstrates your capabilities",
-      "Pursue leadership roles in extracurricular activities aligned with your goals",
-      "Create a standardized testing plan appropriate for your target colleges"
-    ];
+  // Humanities skills
+  else if (major.includes('english') || major.includes('histor') || 
+           major.includes('polit') || major.includes('philos') || 
+           major.includes('sociol') || major.includes('psychol')) {
+    if (skillLevels.communication === 'beginner') {
+      majorSpecificSkills.push("Academic writing and citation methods");
+      majorSpecificSkills.push("Critical reading and text analysis");
+    } else if (skillLevels.communication === 'intermediate') {
+      majorSpecificSkills.push("Advanced research methods in humanities");
+      majorSpecificSkills.push("Scholarly writing and argumentation");
+    } else {
+      majorSpecificSkills.push("Theory application and interdisciplinary analysis");
+      majorSpecificSkills.push("Publication-quality academic writing");
+    }
+    
+    if (skillLevels.research === 'beginner') {
+      majorSpecificSkills.push("Source evaluation and information literacy");
+    } else if (skillLevels.research === 'intermediate') {
+      majorSpecificSkills.push("Qualitative and quantitative research methods");
+    } else {
+      majorSpecificSkills.push("Advanced research design and methodology");
+    }
   }
   
-  return timelinePoints;
+  // If no major-specific skills were added, add some general ones
+  if (majorSpecificSkills.length === 0) {
+    majorSpecificSkills.push("Subject-specific knowledge in your field of interest");
+    majorSpecificSkills.push("Problem-solving techniques relevant to your intended major");
+    majorSpecificSkills.push("Research methods appropriate for your academic interests");
+  }
+  
+  // Combine all skills, prioritizing major-specific ones first
+  const allSkills = [...majorSpecificSkills, ...coreSkills];
+  
+  // Return 5-7 skills, ensuring diversity
+  return allSkills.slice(0, Math.min(7, allSkills.length));
 }
 
 /**
