@@ -271,7 +271,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
             </h3>
             <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
               <ul className="space-y-2">
-                {aiDetails.preparationSteps.map((step, i) => (
+                {Array.isArray(aiDetails.preparationSteps) && aiDetails.preparationSteps.map((step, i) => (
                   <li key={i} className="flex gap-3 items-start">
                     <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
                       {i + 1}
@@ -290,7 +290,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
             </h3>
             <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
               <ul className="space-y-2">
-                {aiDetails.successStrategies.map((strategy, i) => (
+                {Array.isArray(aiDetails.successStrategies) && aiDetails.successStrategies.map((strategy, i) => (
                   <li key={i} className="flex gap-3 items-start">
                     <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
                       {i + 1}
@@ -309,7 +309,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
             </h3>
             <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
               <ul className="space-y-2">
-                {aiDetails.pastWinnerProfiles.map((profile, i) => (
+                {Array.isArray(aiDetails.pastWinnerProfiles) && aiDetails.pastWinnerProfiles.map((profile, i) => (
                   <li key={i} className="flex gap-3 items-start">
                     <div className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
                       {i + 1}
@@ -337,20 +337,24 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
               <Trophy className="h-4 w-4 text-blue-400" /> Related Opportunities
             </h3>
             <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50 space-y-3">
-              {aiDetails.relatedOpportunities.map((opportunity, i) => (
-                <div key={i} className="flex flex-col">
-                  <a 
-                    href={opportunity.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex gap-2 items-center text-blue-400 hover:text-blue-300 hover:underline font-medium"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    <span>{opportunity.name}</span>
-                  </a>
-                  <p className="text-xs text-zinc-400 mt-1 ml-6">{opportunity.description}</p>
-                </div>
-              ))}
+              {Array.isArray(aiDetails.relatedOpportunities) && aiDetails.relatedOpportunities.length > 0 ? (
+                aiDetails.relatedOpportunities.map((opportunity, i) => (
+                  <div key={i} className="flex flex-col">
+                    <a 
+                      href={opportunity.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex gap-2 items-center text-blue-400 hover:text-blue-300 hover:underline font-medium"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span>{opportunity.name}</span>
+                    </a>
+                    <p className="text-xs text-zinc-400 mt-1 ml-6">{opportunity.description || ""}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-zinc-400">No related opportunities available.</p>
+              )}
             </div>
           </div>
         </div>

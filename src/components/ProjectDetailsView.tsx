@@ -269,10 +269,10 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
               <Calendar className="h-4 w-4 text-blue-400" /> Project Timeline
             </h3>
             <div className="space-y-4">
-              {aiDetails.timeline.map((phase, phaseIdx) => (
+              {Array.isArray(aiDetails.timeline) && aiDetails.timeline.map((phase, phaseIdx) => (
                 <div key={phaseIdx} className="relative pl-8">
                   {/* Timeline connector */}
-                  {phaseIdx < aiDetails.timeline.length - 1 && (
+                  {phaseIdx < (aiDetails.timeline?.length || 0) - 1 && (
                     <div className="absolute left-3 top-3 bottom-0 w-0.5 bg-zinc-700" />
                   )}
                   
@@ -284,7 +284,7 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
                   <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
                     <h4 className="font-medium text-zinc-200 mb-2">{phase.phase}</h4>
                     <ul className="space-y-1.5 pl-1">
-                      {phase.tasks.map((task, taskIdx) => (
+                      {Array.isArray(phase.tasks) && phase.tasks.map((task, taskIdx) => (
                         <li key={taskIdx} className="flex gap-2 items-start text-zinc-300 text-sm">
                           <span className="text-blue-400 mt-1">•</span>
                           <span>{task}</span>
@@ -304,7 +304,7 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
             </h3>
             <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50">
               <ul className="space-y-2">
-                {aiDetails.tips.map((tip, i) => (
+                {Array.isArray(aiDetails.tips) && aiDetails.tips.map((tip, i) => (
                   <li key={i} className="flex gap-3 items-start">
                     <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
                       {i + 1}
@@ -322,20 +322,24 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
               <BookOpen className="h-4 w-4 text-purple-400" /> Recommended Resources
             </h3>
             <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700/50 space-y-3">
-              {aiDetails.resourceLinks.map((resource, i) => (
-                <div key={i} className="flex flex-col">
-                  <a 
-                    href={resource.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex gap-2 items-center text-blue-400 hover:text-blue-300 hover:underline font-medium"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    <span>{resource.name}</span>
-                  </a>
-                  <p className="text-xs text-zinc-400 mt-1 ml-6">{resource.description}</p>
-                </div>
-              ))}
+              {Array.isArray(aiDetails.resourceLinks) && aiDetails.resourceLinks.length > 0 ? (
+                aiDetails.resourceLinks.map((resource, i) => (
+                  <div key={i} className="flex flex-col">
+                    <a 
+                      href={resource.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex gap-2 items-center text-blue-400 hover:text-blue-300 hover:underline font-medium"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span>{resource.name}</span>
+                    </a>
+                    <p className="text-xs text-zinc-400 mt-1 ml-6">{resource.description || ""}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-zinc-400">No resources available.</p>
+              )}
             </div>
           </div>
         </div>
