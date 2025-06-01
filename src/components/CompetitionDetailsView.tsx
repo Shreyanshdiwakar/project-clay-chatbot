@@ -320,7 +320,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
         {competition.url && (
           <a 
             href={competition.url} 
-            target="_blank" 
+            target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 hover:underline mt-3"
           >
