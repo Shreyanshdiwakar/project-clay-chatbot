@@ -730,6 +730,9 @@ export function EnhancedRecommendations({
       {activeFeedback && (
         <Dialog open={true} onOpenChange={(isOpen) => !isOpen && setActiveFeedback(null)}>
           <DialogContent className="bg-zinc-900 border-zinc-800 p-0 text-white">
+            <DialogHeader>
+              <DialogTitle className="sr-only">Recommendation Feedback</DialogTitle>
+            </DialogHeader>
             <RecommendationFeedback
               recommendationId={activeFeedback.id}
               recommendationType={activeFeedback.type}
