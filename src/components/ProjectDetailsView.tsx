@@ -110,7 +110,67 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
       toast.error("Failed to load detailed guidance", { 
         description: "Please try again later" 
       });
-      setAiDetails(null);
+      setAiDetails({
+        detailedPlan: "Start by researching successful examples of similar projects. Then, create a detailed project plan with clear objectives, timeline, and required resources. Break down the implementation into smaller tasks and assign deadlines to each. Execute the project methodically, ensuring regular reviews and adjustments. Document your progress, challenges, and solutions throughout. Finally, prepare a compelling presentation of your work and findings for relevant audiences.",
+        resourceLinks: [
+          {
+            name: "Project Management Guide",
+            url: "https://www.pmi.org/learning/library",
+            description: "Comprehensive resources for project planning and execution"
+          },
+          {
+            name: "Online Learning Platform",
+            url: "https://www.coursera.org/",
+            description: "Courses on skills relevant to your project"
+          },
+          {
+            name: "Research Methods Guide",
+            url: "https://www.scribbr.com/category/methodology/",
+            description: "Learn proper research techniques for your project"
+          },
+          {
+            name: "Presentation Skills",
+            url: "https://www.toastmasters.org/resources",
+            description: "Resources to improve your presentation abilities"
+          }
+        ],
+        tips: [
+          "Create a detailed timeline with specific milestones and deadlines",
+          "Seek feedback regularly from mentors or teachers",
+          "Document your process thoroughly for college applications",
+          "Connect your project to your intended major or career goals",
+          "Balance ambition with realistic scope to ensure completion"
+        ],
+        timeline: [
+          {
+            phase: "Research & Planning",
+            tasks: [
+              "Conduct background research on your topic",
+              "Define specific project goals and outcomes",
+              "Create a detailed implementation plan",
+              "Identify necessary resources and mentors"
+            ]
+          },
+          {
+            phase: "Development",
+            tasks: [
+              "Begin implementing your project plan",
+              "Meet regularly with mentors for guidance",
+              "Adjust approach based on challenges encountered",
+              "Document progress and methodology"
+            ]
+          },
+          {
+            phase: "Completion & Presentation",
+            tasks: [
+              "Finalize your project deliverables",
+              "Prepare a compelling presentation",
+              "Create documentation for your portfolio",
+              "Reflect on learnings and outcomes"
+            ]
+          }
+        ]
+      });
     } finally {
       setIsLoading(false);
     }

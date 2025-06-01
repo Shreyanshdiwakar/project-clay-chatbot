@@ -110,7 +110,53 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
       toast.error("Failed to load detailed guidance", { 
         description: "Please try again later" 
       });
-      setAiDetails(null);
+      setAiDetails({
+        applicationProcess: "Research the competition's official website for detailed application requirements and deadlines. Create an account on their application portal if required. Prepare all necessary documents, such as your personal statement, project description, or academic records. Review the submission guidelines carefully to ensure you meet all requirements. Have a teacher or mentor review your application before submitting. Submit well before the deadline to avoid technical issues.",
+        preparationSteps: [
+          "Research past winners and successful entries to understand what the judges value",
+          "Create a detailed preparation timeline working backward from the deadline",
+          "Gather necessary resources and materials for your project or submission",
+          "Seek mentorship from teachers or professionals in your field",
+          "Practice your presentation skills if the competition includes a presentation component",
+          "Prepare to address common questions or challenges related to your submission"
+        ],
+        successStrategies: [
+          "Focus on innovation and originality rather than just technical excellence",
+          "Demonstrate clear real-world applications or impact of your work",
+          "Document your process thoroughly, including challenges and how you overcame them",
+          "Connect your project to broader issues or demonstrate interdisciplinary thinking",
+          "Practice explaining your work to both experts and non-experts"
+        ],
+        pastWinnerProfiles: [
+          "Projects that addressed significant real-world problems with innovative solutions",
+          "Work that demonstrated exceptional creativity and original thinking",
+          "Submissions showing strong research methodology and scientific rigor",
+          "Projects that effectively communicated complex concepts in accessible ways"
+        ],
+        scholarshipInfo: "This competition typically offers recognition and awards to top performers. Prizes may include monetary scholarships, certificates, trophies, or special opportunities like internships or mentorships. Winners often receive recognition that can be valuable for college applications and résumés. Check the competition's official website for the most current information about specific award amounts and types.",
+        relatedOpportunities: [
+          {
+            name: "Similar National Competition",
+            url: "https://www.example.org/national-competition",
+            description: "Another prestigious competition in this field with different timing"
+          },
+          {
+            name: "Summer Research Program",
+            url: "https://www.example.org/summer-research",
+            description: "Research opportunity that builds skills relevant to this competition"
+          },
+          {
+            name: "Online Learning Community",
+            url: "https://www.example.org/learning-community",
+            description: "Platform to connect with other students interested in this field"
+          },
+          {
+            name: "Mentorship Program",
+            url: "https://www.example.org/mentorship",
+            description: "Get guidance from professionals in this field"
+          }
+        ]
+      });
     } finally {
       setIsLoading(false);
     }
