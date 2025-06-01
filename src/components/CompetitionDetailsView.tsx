@@ -144,22 +144,22 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
         relatedOpportunities: [
           {
             name: "Similar National Competition",
-            url: "https://www.example.org/national-competition",
+            url: "https://www.google.com/search?q=competitions+similar+to+" + encodeURIComponent(competition.name),
             description: "Another prestigious competition in this field with different timing"
           },
           {
             name: "Summer Research Program",
-            url: "https://www.example.org/summer-research",
+            url: "https://www.google.com/search?q=summer+research+program+" + encodeURIComponent(competition.category?.[0] || ""),
             description: "Research opportunity that builds skills relevant to this competition"
           },
           {
             name: "Online Learning Community",
-            url: "https://www.example.org/learning-community",
+            url: "https://www.edx.org/search?q=" + encodeURIComponent(competition.category?.[0] || "competition"),
             description: "Platform to connect with other students interested in this field"
           },
           {
             name: "Mentorship Program",
-            url: "https://www.example.org/mentorship",
+            url: "https://www.google.com/search?q=mentorship+program+" + encodeURIComponent(competition.category?.[0] || ""),
             description: "Get guidance from professionals in this field"
           }
         ]
