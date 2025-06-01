@@ -1,11 +1,10 @@
 /**
  * LangChain Embeddings Service
  * 
- * This module provides functions for generating embeddings using HuggingFace models,
- * with fallbacks to OpenAI embeddings, or local embeddings if no API keys are available.
+ * This module provides functions for generating embeddings using OpenAI models,
+ * with fallbacks to local embeddings if no API keys are available.
  */
 
-import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { Embeddings } from "@langchain/core/embeddings";
 import { env } from "@/config/env";
@@ -13,47 +12,20 @@ import { env } from "@/config/env";
 // Cache the embeddings instance to prevent creating multiple instances
 let cachedEmbeddings: Embeddings | null = null;
 
-// Get HuggingFace API key from environment variables
-const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY || 
-                           process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY || 
-                           process.env.VERCEL_HUGGINGFACE_API_KEY;
-
 /**
  * Get an embeddings instance for vector embeddings
- * With fallback chain: HuggingFace API -> OpenAI -> Local embeddings
+ * Using OpenAI embeddings with fallback to local embeddings
  */
 export function getEmbeddings(modelName?: string): Embeddings {
   if (cachedEmbeddings) {
     return cachedEmbeddings;
   }
 
-  // Default model if none specified
-  const embeddingModel = modelName || "all-MPNet-base-v2";
-  
   try {
-    // Attempt to use HuggingFace API with API key if available
-    if (HUGGINGFACE_API_KEY) {
-      try {
-        // Create HuggingFace embeddings with API key
-        cachedEmbeddings = new HuggingFaceInferenceEmbeddings({
-          model: embeddingModel,
-          apiKey: HUGGINGFACE_API_KEY,
-        });
-        
-        console.log(`Created embeddings using HuggingFace model: ${embeddingModel} with API key`);
-        return cachedEmbeddings;
-      } catch (hfError) {
-        console.warn(`Error with HuggingFace API embeddings: ${hfError}`);
-        // Continue to fallbacks
-      }
-    } else {
-      console.warn('No HuggingFace API key provided. Trying fallback options.');
-    }
-    
-    // Fallback to OpenAI embeddings if HuggingFace fails
+    // Attempt to use OpenAI embeddings if API key is available
     if (env.OPENAI_API_KEY) {
       try {
-        console.log('Attempting to use OpenAI embeddings');
+        console.log('Creating embeddings using OpenAI');
         
         cachedEmbeddings = new OpenAIEmbeddings({
           openAIApiKey: env.OPENAI_API_KEY,
@@ -67,11 +39,10 @@ export function getEmbeddings(modelName?: string): Embeddings {
         // Continue to local fallback
       }
     } else {
-      console.warn('No OpenAI API key provided. Trying local embeddings.');
+      console.warn('No OpenAI API key provided. Using local embeddings fallback.');
     }
     
     // Final fallback - use simple local embeddings implementation
-    // Replace the problematic chromadb-default-embed dependency with a simple implementation
     console.log('Using simple local embeddings fallback');
     
     // Create a simple embeddings implementation using the OpenAIEmbeddings
