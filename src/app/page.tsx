@@ -15,11 +15,11 @@ import { KnowledgeBaseManager } from '@/components/KnowledgeBaseManager';
 import { StudentQuestionnaire, StudentProfile } from '@/components/StudentQuestionnaire';
 import { generateRecommendations } from '@/services/recommendations';
 import { RecommendationResponse, EnhancedRecommendationResponse } from '@/services/recommendations/types';
-import { AlertCircle, BookOpen, Award, Calendar, Trophy, AlertTriangle, ExternalLink } from 'lucide-react';
+import { EnhancedRecommendations } from '@/components/EnhancedRecommendations';
+import { AlertCircle, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export default function Home() {
@@ -435,7 +435,7 @@ export default function Home() {
                 <ThinkingIndicator steps={thinkingSteps} model="GPT-4.1 Mini" />
               )}
               {error && (
-                <Alert variant="destructive\" className="bg-red-950/30 border-red-800/30 text-red-300">
+                <Alert variant="destructive" className="bg-red-950/30 border-red-800/30 text-red-300">
                   <AlertTriangle className="h-5 w-5" />
                   <AlertTitle className="text-red-300">Error</AlertTitle>
                   <AlertDescription className="text-red-200">{error}</AlertDescription>
@@ -495,101 +495,11 @@ export default function Home() {
                 </CardContent>
               </Card>
             ) : recommendations ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-zinc-100">
-                      <BookOpen className="h-5 w-5 text-blue-400" />
-                      Suggested Projects
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {recommendations.suggestedProjects.map((project, idx) => (
-                        <li key={idx} className="flex gap-2 items-start">
-                          <span className="text-blue-400 mt-1">•</span>
-                          <span className="text-zinc-300">{project}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                  <CardHeader className="pb-2 flex flex-row justify-between items-center">
-                    <CardTitle className="flex items-center gap-2 text-zinc-100">
-                      <Trophy className="h-5 w-5 text-amber-400" />
-                      Suggested Competitions
-                    </CardTitle>
-                    <Badge variant="outline" className="bg-blue-900/20 border-blue-700/30 text-blue-300 text-xs">
-                      Web Search
-                    </Badge>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {recommendations.suggestedCompetitions.map((comp, idx) => (
-                        <li key={idx} className="flex gap-2 items-start">
-                          <span className="text-amber-400 mt-1">•</span>
-                          <span className="text-zinc-300">
-                            <span 
-                              dangerouslySetInnerHTML={{
-                                __html: comp.replace(/\[([^\]]+)\]\(([^)]+)\)/, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline inline-flex items-center gap-1">$1 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>')
-                              }}
-                            />
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-zinc-100">
-                      <Award className="h-5 w-5 text-purple-400" />
-                      Skills to Develop
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {recommendations.suggestedSkills.map((skill, idx) => (
-                        <li key={idx} className="flex gap-2 items-start">
-                          <span className="text-purple-400 mt-1">•</span>
-                          <span className="text-zinc-300">{skill}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-zinc-100">
-                      <Calendar className="h-5 w-5 text-green-400" />
-                      Timeline
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-2">
-                      {recommendations.timeline.map((item, idx) => (
-                        <li key={idx} className="flex gap-2 items-start">
-                          <span className="text-green-400 mt-1">•</span>
-                          <span className="text-zinc-300">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                <Card className="md:col-span-2 bg-zinc-900 border-zinc-800 shadow-lg">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-zinc-100">Profile Analysis</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-zinc-300">{recommendations.profileAnalysis}</p>
-                  </CardContent>
-                </Card>
-              </div>
+              // Use the EnhancedRecommendations component instead of the card-based layout
+              <EnhancedRecommendations 
+                recommendations={recommendations as EnhancedRecommendationResponse}
+                userId={studentProfile.userId}
+              />
             ) : (
               <Card className="bg-zinc-900 border-zinc-800 shadow-lg">
                 <CardHeader>
