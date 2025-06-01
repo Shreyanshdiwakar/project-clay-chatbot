@@ -28,7 +28,7 @@ interface ProjectDetailsProps {
 }
 
 export function ProjectDetailsView({ project }: ProjectDetailsProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [aiDetails, setAiDetails] = useState<{
     detailedPlan: string;
     resourceLinks: { name: string; url: string; description: string }[];
@@ -90,12 +90,9 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
         const parsedResponse = JSON.parse(jsonContent);
         setAiDetails(parsedResponse);
       } catch (parseError) {
-        // If JSON parsing fails, create a structured format from the text
         console.error("Error parsing AI response:", parseError);
         
         // Extract sections from the text response as a fallback
-        const sections = response.content.split(/\n\d+\.\s+/);
-        
         const fallbackDetails = {
           detailedPlan: extractSection(response.content, "DETAILED IMPLEMENTATION PLAN", "RESOURCES"),
           resourceLinks: extractLinks(response.content),
@@ -113,6 +110,7 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
       toast.error("Failed to load detailed guidance", { 
         description: "Please try again later" 
       });
+      setAiDetails(null);
     } finally {
       setIsLoading(false);
     }

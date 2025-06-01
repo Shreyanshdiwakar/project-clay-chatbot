@@ -26,7 +26,7 @@ interface CompetitionDetailsProps {
 }
 
 export function CompetitionDetailsView({ competition }: CompetitionDetailsProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [aiDetails, setAiDetails] = useState<{
     applicationProcess: string;
     preparationSteps: string[];
@@ -91,7 +91,6 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
         const parsedResponse = JSON.parse(jsonContent);
         setAiDetails(parsedResponse);
       } catch (parseError) {
-        // If JSON parsing fails, create a structured format from the text
         console.error("Error parsing AI response:", parseError);
         
         // Extract sections from the text response as a fallback
@@ -111,6 +110,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
       toast.error("Failed to load detailed guidance", { 
         description: "Please try again later" 
       });
+      setAiDetails(null);
     } finally {
       setIsLoading(false);
     }

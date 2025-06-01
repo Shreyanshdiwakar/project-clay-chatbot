@@ -1,10 +1,3 @@
-/**
- * Enhanced Recommendations Component
- * 
- * This component provides a more interactive and detailed view of recommendations
- * with filtering, sorting, and feedback capabilities.
- */
-
 'use client';
 
 import { useState } from 'react';
@@ -16,20 +9,15 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   EnhancedRecommendationResponse, 
-  RecommendationResponse 
+  MonthlyTimelineResponse
 } from '@/services/recommendations/types';
-import {
-  EnhancedProjectRecommendation,
-  EnhancedCompetitionRecommendation
-} from '@/services/recommendations/analysis';
 import { RecommendationFeedback } from '@/components/RecommendationFeedback';
 import { submitFeedback } from '@/services/recommendations/feedback';
 import { ProjectDetailsView } from '@/components/ProjectDetailsView';
 import { CompetitionDetailsView } from '@/components/CompetitionDetailsView';
 import { 
   BookOpen, Award, Calendar, Trophy, Star, Info, Filter,
-  ExternalLink, BarChart3, CheckCircle, ArrowUpRight, List,
-  Layers, Clock, Sparkles
+  ExternalLink, BarChart3, CheckCircle, Clock, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -63,13 +51,13 @@ export function EnhancedRecommendations({
   
   // Prepare competition data 
   // Note: In a real implementation, this would use the enhanced data from the API
-  const competitions: EnhancedCompetitionRecommendation[] = recommendations.suggestedCompetitions.map((comp, idx) => {
+  const competitions = recommendations.suggestedCompetitions.map((comp, idx) => {
     // Parse name and URL if in markdown link format [name](url)
     const linkMatch = comp.match(/\[([^\]]+)\]\(([^)]+)\)/);
     const name = linkMatch ? linkMatch[1] : comp.split(' - ')[0];
     const url = linkMatch ? linkMatch[2] : '';
     
-    // Generate a mock competition with realistic data
+    // Generate a competition with realistic data
     return {
       name,
       url,
@@ -85,9 +73,9 @@ export function EnhancedRecommendations({
   });
   
   // Prepare project data
-  const projects: EnhancedProjectRecommendation[] = hasEnhancedData 
+  const projects = hasEnhancedData 
     ? recommendations.recommendedActivities.map((proj, idx) => {
-        // Convert from recommendedActivities format to EnhancedProjectRecommendation
+        // Convert from recommendedActivities format to project format
         return {
           name: proj.name,
           description: proj.description,
@@ -111,7 +99,7 @@ export function EnhancedRecommendations({
         };
       })
     : recommendations.suggestedProjects.map((proj, idx) => {
-        // Generate a mock project with realistic data
+        // Generate a project with realistic data
         return {
           name: proj,
           description: `A project to develop your skills in ${recommendations.suggestedSkills[idx % recommendations.suggestedSkills.length]}`,
