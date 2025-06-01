@@ -25,6 +25,12 @@ interface ChatCompletionOptions extends ChatCompletionRequest {
   tool_choice?: "auto" | "none";  // Control when tools are used
 }
 
+// Configuration for timeout and retry
+const FETCH_TIMEOUT_MS = 60000; // 60 seconds timeout
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000; // 1 second
+const MAX_RETRY_DELAY = 10000; // 10 seconds
+
 // Using OpenAI's built-in web browsing capability instead of external search API
 
 export function createSystemPrompt(pdfContent?: string | null, profileContext?: string | null, webAccessEnabled?: boolean): string {
@@ -319,6 +325,76 @@ async function performWebSearch(query: string): Promise<WebSearchResult[]> {
   ];
 }
 
+/**
+ * Fetch with timeout and retry logic
+ * @param url The URL to fetch
+ * @param options Fetch options
+ * @param timeoutMs Timeout in milliseconds
+ * @param retryCount Current retry count
+ * @returns The fetch response
+ */
+async function fetchWithRetry(
+  url: string, 
+  options: any, 
+  timeoutMs = FETCH_TIMEOUT_MS, 
+  retryCount = 0
+): Promise<Response> {
+  // Create an AbortController to handle timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    // Add the signal to the options
+    const fetchOptions = {
+      ...options,
+      signal: controller.signal
+    };
+
+    const response = await fetch(url, fetchOptions);
+    clearTimeout(timeoutId);
+    
+    // If we get a rate limit or server error, retry with exponential backoff
+    if (
+      (response.status === 429 || response.status >= 500) && 
+      retryCount < MAX_RETRIES
+    ) {
+      const delay = Math.min(
+        INITIAL_RETRY_DELAY * Math.pow(2, retryCount),
+        MAX_RETRY_DELAY
+      );
+      
+      console.log(`Request failed with status ${response.status}. Retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return fetchWithRetry(url, options, timeoutMs, retryCount + 1);
+    }
+    
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    // If we got an abort error due to timeout
+    if (error.name === 'AbortError') {
+      if (retryCount < MAX_RETRIES) {
+        const delay = Math.min(
+          INITIAL_RETRY_DELAY * Math.pow(2, retryCount),
+          MAX_RETRY_DELAY
+        );
+        
+        console.log(`Request timed out after ${timeoutMs}ms. Retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchWithRetry(url, options, timeoutMs, retryCount + 1);
+      } else {
+        throw new Error(`Request timed out after ${retryCount + 1} attempts`);
+      }
+    }
+    
+    // For other errors
+    throw error;
+  }
+}
+
 // Helper function to handle OpenAI function calls
 async function handleFunctionCalls(toolCalls: any[]): Promise<{name: string; content: string;}[]> {
   const results: {name: string; content: string;}[] = [];
@@ -465,8 +541,8 @@ export async function callOpenAIAPI(
     const requestJson = JSON.stringify(requestBody);
     console.log('Final request JSON length:', requestJson.length);
     
-    // Send the initial request
-    let response = await fetch(env.OPENAI_API_URL, {
+    // Send the initial request with timeout and retry logic
+    let response = await fetchWithRetry(env.OPENAI_API_URL, {
       method: 'POST',
       headers,
       body: requestJson,
@@ -594,7 +670,8 @@ export async function callOpenAIAPI(
         max_tokens: 1000
       };
       
-      const followUpResponse = await fetch(env.OPENAI_API_URL, {
+      // Send the follow-up request with retry logic
+      const followUpResponse = await fetchWithRetry(env.OPENAI_API_URL, {
         method: 'POST',
         headers,
         body: JSON.stringify(followUpRequest),
@@ -673,10 +750,18 @@ export async function callOpenAIAPI(
     };
   } catch (error) {
     console.error(`Error while using model ${model}:`, error);
+    
+    // Determine if it's a timeout error
+    const isTimeoutError = error.name === 'AbortError' || error.message?.includes('timeout');
+    const errorMessage = isTimeoutError
+      ? `Request timed out after multiple attempts. This might be due to the complexity of your query or server load.`
+      : `API call failed: ${error instanceof Error ? error.message : String(error)}`;
+    
     return {
       success: false,
-      error: `API call failed: ${error instanceof Error ? error.message : String(error)}`,
-      webSearchAttempted: enableWebSearch
+      error: errorMessage,
+      webSearchAttempted: enableWebSearch,
+      isTimeout: isTimeoutError
     };
   }
 }

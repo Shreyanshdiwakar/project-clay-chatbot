@@ -29,6 +29,7 @@ export default function Home() {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [thinkingSteps, setThinkingSteps] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [timeoutOccurred, setTimeoutOccurred] = useState(false);
   const [profileContext, setProfileContext] = useState<string | null>(null);
   const [pdfContent, setPdfContent] = useState<string | null>(null);
   const [pdfUploaded, setPdfUploaded] = useState(false);
@@ -40,6 +41,49 @@ export default function Home() {
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [recommendations, setRecommendations] = useState<RecommendationResponse | EnhancedRecommendationResponse | null>(null);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+
+  // Memory cleanup logic
+  useEffect(() => {
+    // Function to clean up memory when component unmounts or page is hidden
+    const cleanup = () => {
+      // Clear large objects from memory
+      setPdfContent(null);
+      setThinkingSteps([]);
+      
+      // Only keep the most recent 20 messages in state
+      if (messages.length > 20) {
+        setMessages(prev => prev.slice(prev.length - 20));
+      }
+      
+      console.log('Memory cleanup performed');
+    };
+    
+    // Clean up when component unmounts
+    return () => {
+      cleanup();
+    };
+  }, [messages.length]);
+  
+  // Clean up on visibility change (tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // Page is hidden, clean up memory
+        console.log('Page hidden, performing memory cleanup');
+        
+        // Only keep the most recent 20 messages in memory
+        if (messages.length > 20) {
+          setMessages(prev => prev.slice(prev.length - 20));
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [messages.length]);
 
   // Initial welcome message
   useEffect(() => {
@@ -86,6 +130,9 @@ export default function Home() {
   };
 
   const handleSendMessage = async (content: string, files?: File[]) => {
+    // Reset timeout error state
+    setTimeoutOccurred(false);
+    
     // If no message but files are present, use a default message
     const messageToSend = content.trim() || (files && files.length > 0 ? 'See attached files.' : '');
     if (!messageToSend) return;
@@ -164,7 +211,11 @@ export default function Home() {
       
       console.log('API response status:', response.status, response.statusText);
       
-      let data;
+      // Check for timeout (status 408)
+      if (response.status === 408) {
+        setTimeoutOccurred(true);
+        throw new Error('Your request timed out. Try a shorter question or disable web search for faster responses.');
+      }
       
       // First check if the response was successful
       if (!response.ok) {
@@ -181,6 +232,7 @@ export default function Home() {
         }
       }
       
+      let data;
       try {
         // For successful responses, try to get response as JSON directly
         data = await response.json();
@@ -215,6 +267,12 @@ export default function Home() {
         throw new Error(`API error: ${data.error}`);
       }
       
+      // Check for timeout flag
+      if (data.isTimeout) {
+        setTimeoutOccurred(true);
+        throw new Error('Your request timed out. Try a shorter question or disable web search.');
+      }
+      
       // Ensure message property exists
       if (!data.message) {
         console.error('Missing message in API response:', data);
@@ -245,6 +303,13 @@ export default function Home() {
       setTimeout(() => {
         setMessages(prev => [...prev, botMessage]);
         setIsThinking(false);
+        
+        // Update this session with the new message count
+        const sessionId = Math.random().toString(36).substring(2, 15);
+        activeSessions.set(sessionId, {
+          lastActive: Date.now(),
+          messagesCount: (activeSessions.get(sessionId)?.messagesCount || 0) + 1
+        });
       }, data.thinking && data.thinking.length > 0 ? 800 : 0);
     } catch (err) {
       setIsThinking(false);
@@ -436,7 +501,7 @@ export default function Home() {
                 <ThinkingIndicator steps={thinkingSteps} model="GPT-4.1 Mini" />
               )}
               {error && (
-                <Alert variant="destructive\" className="bg-red-950/30 border-red-800/30 text-red-300">
+                <Alert variant="destructive" className="bg-red-950/30 border-red-800/30 text-red-300">
                   <AlertTriangle className="h-5 w-5" />
                   <AlertTitle className="text-red-300">Error</AlertTitle>
                   <AlertDescription className="text-red-200">{error}</AlertDescription>
@@ -452,6 +517,7 @@ export default function Home() {
                 isSearchMode={isSearchMode}
                 onToggleSearchMode={toggleSearchMode}
                 placeholder="Ask about college planning, activities, or admissions..."
+                timeoutOccurred={timeoutOccurred}
               />
             </div>
           </TabsContent>
@@ -561,6 +627,27 @@ export default function Home() {
                     className={isSearchMode ? "bg-blue-600 hover:bg-blue-700" : ""}
                   >
                     {isSearchMode ? "Web Search Enabled" : "Web Search Disabled"}
+                  </Button>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+                  <h3 className="text-md font-medium mb-2 text-zinc-200">Memory Management</h3>
+                  <p className="text-sm text-zinc-400 mb-3">
+                    Control how the application manages chat history and memory usage.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      // Keep only the welcome message
+                      const welcomeMessage = messages.find(m => m.id === 'welcome');
+                      setMessages(welcomeMessage ? [welcomeMessage] : []);
+                      toast.success('Chat history cleared', {
+                        description: 'Memory has been freed up'
+                      });
+                    }}
+                    variant="outline"
+                    className="border-red-700 text-red-400 hover:bg-red-950/30"
+                  >
+                    Clear Chat History
                   </Button>
                 </div>
               </CardContent>

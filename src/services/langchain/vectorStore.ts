@@ -10,6 +10,15 @@ import { Document } from "@langchain/core/documents";
 import path from "path";
 import fs from "fs";
 
+// Maximum batch size for embedding operations
+const MAX_BATCH_SIZE = 100;
+
+// Relevance threshold for filtering results (0.0 to 1.0)
+const DEFAULT_RELEVANCE_THRESHOLD = 0.6;
+
+// Default pagination parameters
+const DEFAULT_PAGE_SIZE = 10;
+
 // Ensure the vectorstore directory exists
 const ensureVectorStoreDir = (dir: string) => {
   if (!fs.existsSync(dir)) {
@@ -87,6 +96,45 @@ class SimpleVectorStore {
   }
   
   /**
+   * Process documents in batches to avoid memory issues
+   */
+  private async processBatchedDocuments(documents: Document[]): Promise<void> {
+    // Process documents in batches to avoid memory issues
+    const batches = [];
+    for (let i = 0; i < documents.length; i += MAX_BATCH_SIZE) {
+      batches.push(documents.slice(i, i + MAX_BATCH_SIZE));
+    }
+    
+    console.log(`Processing ${documents.length} documents in ${batches.length} batches`);
+    
+    let processedCount = 0;
+    for (const batch of batches) {
+      // Pre-compute and cache embeddings for the batch
+      for (const doc of batch) {
+        if (doc.pageContent && !this.embedCache.has(doc.pageContent)) {
+          try {
+            const embedding = await this.embeddings.embedQuery(doc.pageContent);
+            this.embedCache.set(doc.pageContent, embedding);
+            processedCount++;
+            
+            // Log progress for large batches
+            if (processedCount % 20 === 0) {
+              console.log(`Processed ${processedCount}/${documents.length} documents...`);
+            }
+          } catch (error) {
+            console.error(`Error computing embedding: ${error}`);
+          }
+        }
+      }
+      
+      // Add the batch to our documents array
+      this.documents.push(...batch);
+    }
+    
+    console.log(`Completed processing ${processedCount} new documents`);
+  }
+  
+  /**
    * Add documents to the vector store
    */
   async addDocuments(documents: Document[]): Promise<void> {
@@ -94,19 +142,8 @@ class SimpleVectorStore {
       return;
     }
     
-    this.documents.push(...documents);
-    
-    // Pre-compute and cache embeddings for all documents
-    for (const doc of documents) {
-      if (doc.pageContent) {
-        try {
-          const embedding = await this.embeddings.embedQuery(doc.pageContent);
-          this.embedCache.set(doc.pageContent, embedding);
-        } catch (error) {
-          console.error(`Error computing embedding: ${error}`);
-        }
-      }
-    }
+    // Process documents in batches
+    await this.processBatchedDocuments(documents);
     
     // Save to disk after adding documents
     this.saveToDisk();
@@ -136,17 +173,24 @@ class SimpleVectorStore {
   }
   
   /**
-   * Search for similar documents based on a query
+   * Search for similar documents based on a query with pagination
    */
   async similaritySearchWithScore(
     query: string, 
-    k = 5
+    k = 5,
+    threshold = DEFAULT_RELEVANCE_THRESHOLD,
+    page = 1
   ): Promise<[Document, number][]> {
     if (this.documents.length === 0) {
       return [];
     }
     
+    const pageSize = k > 0 ? k : DEFAULT_PAGE_SIZE;
+    const skip = (page - 1) * pageSize;
+    
     try {
+      console.log(`Running similarity search with threshold: ${threshold}, page: ${page}, pageSize: ${pageSize}`);
+      
       // Embed the query
       const queryEmbedding = await this.embeddings.embedQuery(query);
       
@@ -154,6 +198,8 @@ class SimpleVectorStore {
       const similarities: [Document, number][] = [];
       
       for (const doc of this.documents) {
+        if (!doc.pageContent) continue;
+        
         let docEmbedding: number[];
         
         // Use cached embedding if available
@@ -161,18 +207,32 @@ class SimpleVectorStore {
           docEmbedding = this.embedCache.get(doc.pageContent)!;
         } else {
           // Compute embedding if not cached
-          docEmbedding = await this.embeddings.embedQuery(doc.pageContent);
-          this.embedCache.set(doc.pageContent, docEmbedding);
+          try {
+            docEmbedding = await this.embeddings.embedQuery(doc.pageContent);
+            this.embedCache.set(doc.pageContent, docEmbedding);
+          } catch (error) {
+            console.error(`Error embedding document: ${error}`);
+            continue; // Skip this document on error
+          }
         }
         
         const similarity = this.cosineSimilarity(queryEmbedding, docEmbedding);
-        similarities.push([doc, similarity]);
+        
+        // Only add documents that meet the threshold
+        if (similarity >= threshold) {
+          similarities.push([doc, similarity]);
+        }
       }
       
-      // Sort by similarity (highest first) and take top k
-      return similarities
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, k);
+      // Sort by similarity (highest first)
+      const sortedResults = similarities.sort((a, b) => b[1] - a[1]);
+      
+      // Apply pagination
+      const paginatedResults = sortedResults.slice(skip, skip + pageSize);
+      
+      console.log(`Found ${sortedResults.length} results above threshold ${threshold}, returning ${paginatedResults.length} results for page ${page}`);
+      
+      return paginatedResults;
     } catch (error) {
       console.error(`Error in similaritySearchWithScore: ${error}`);
       return [];
@@ -187,6 +247,32 @@ class SimpleVectorStore {
     this.embedCache.clear();
     this.saveToDisk();
     console.log(`Cleared collection ${this.collectionName}`);
+  }
+  
+  /**
+   * Get the number of documents in the collection
+   */
+  getDocumentCount(): number {
+    return this.documents.length;
+  }
+  
+  /**
+   * Get memory usage statistics
+   */
+  getMemoryStats(): { documentsCount: number; cacheSize: number; estimatedMemoryUsageMB: number } {
+    // Estimate memory usage (very rough approximation)
+    const cacheSize = this.embedCache.size;
+    const avgEmbeddingSize = 384 * 4; // 384 dimensions * 4 bytes per float
+    const estimatedMemoryBytes = 
+      (this.documents.reduce((sum, doc) => sum + (doc.pageContent?.length || 0), 0) * 2) + // Text content (2 bytes per char)
+      (cacheSize * avgEmbeddingSize) + // Embeddings cache
+      (JSON.stringify(this.documents.map(d => d.metadata)).length * 2); // Metadata (2 bytes per char)
+    
+    return {
+      documentsCount: this.documents.length,
+      cacheSize,
+      estimatedMemoryUsageMB: Math.round(estimatedMemoryBytes / (1024 * 1024) * 100) / 100
+    };
   }
 }
 
@@ -221,13 +307,15 @@ export async function createVectorStore({
 }
 
 /**
- * Query the vector store for semantically similar documents
+ * Query the vector store for semantically similar documents with pagination and threshold
  */
 export async function queryVectorStore(
   query: string,
   collectionName = "default",
   persistDirectory?: string,
-  limit = 5
+  limit = 5,
+  threshold = DEFAULT_RELEVANCE_THRESHOLD,
+  page = 1
 ): Promise<RetrievalResult> {
   try {
     const dirPath = persistDirectory || path.join(process.cwd(), "data", "vectorstore");
@@ -238,8 +326,22 @@ export async function queryVectorStore(
       persistDirectory: dirPath,
     });
     
-    // Perform similarity search
-    const results = await vectorStore.similaritySearchWithScore(query, limit);
+    // Log memory stats before query
+    const memoryStats = vectorStore.getMemoryStats();
+    console.log(`Vector store stats before query - Documents: ${memoryStats.documentsCount}, Cache size: ${memoryStats.cacheSize}, Estimated memory: ${memoryStats.estimatedMemoryUsageMB}MB`);
+    
+    // If store is empty, return early
+    if (vectorStore.getDocumentCount() === 0) {
+      return {
+        success: true,
+        results: []
+      };
+    }
+    
+    console.log(`Querying vector store with: "${query}", limit: ${limit}, threshold: ${threshold}, page: ${page}`);
+    
+    // Perform similarity search with threshold and pagination
+    const results = await vectorStore.similaritySearchWithScore(query, limit, threshold, page);
     
     // Format results
     const formattedResults: QueryResult[] = results.map(([doc, score]) => ({
@@ -250,7 +352,12 @@ export async function queryVectorStore(
     
     return {
       success: true,
-      results: formattedResults
+      results: formattedResults,
+      pagination: {
+        page,
+        pageSize: limit,
+        totalResults: results.length
+      }
     };
   } catch (error) {
     console.error(`Error querying vector store: ${error}`);
@@ -259,4 +366,4 @@ export async function queryVectorStore(
       error: error instanceof Error ? error.message : String(error)
     };
   }
-} 
+}

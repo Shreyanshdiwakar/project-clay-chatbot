@@ -15,6 +15,8 @@ export async function GET(request: Request): Promise<NextResponse<RetrievalResul
     const query = searchParams.get('query');
     const collection = searchParams.get('collection') || 'default';
     const limit = parseInt(searchParams.get('limit') || '5', 10);
+    const threshold = parseFloat(searchParams.get('threshold') || '0.6');
+    const page = parseInt(searchParams.get('page') || '1', 10);
     
     if (!query) {
       return NextResponse.json(
@@ -23,9 +25,16 @@ export async function GET(request: Request): Promise<NextResponse<RetrievalResul
       );
     }
     
-    console.log(`Processing vector store query: "${query}" in collection: ${collection}`);
+    console.log(`Processing vector store query: "${query}" in collection: ${collection}, page: ${page}, limit: ${limit}, threshold: ${threshold}`);
     
-    const results = await queryVectorStore(query, collection, undefined, limit);
+    const results = await queryVectorStore(
+      query,
+      collection,
+      undefined,
+      limit,
+      threshold,
+      page
+    );
     
     return NextResponse.json(results);
   } catch (error) {
@@ -52,7 +61,13 @@ export async function POST(request: Request): Promise<NextResponse<RetrievalResu
     }
     
     const body = await request.json();
-    const { query, collection = 'default', limit = 5 } = body;
+    const { 
+      query, 
+      collection = 'default', 
+      limit = 5,
+      threshold = 0.6,
+      page = 1 
+    } = body;
     
     if (!query) {
       return NextResponse.json(
@@ -61,9 +76,16 @@ export async function POST(request: Request): Promise<NextResponse<RetrievalResu
       );
     }
     
-    console.log(`Processing vector store query: "${query}" in collection: ${collection}`);
+    console.log(`Processing vector store query: "${query}" in collection: ${collection}, page: ${page}, limit: ${limit}, threshold: ${threshold}`);
     
-    const results = await queryVectorStore(query, collection, undefined, limit);
+    const results = await queryVectorStore(
+      query,
+      collection,
+      undefined,
+      limit,
+      threshold,
+      page
+    );
     
     return NextResponse.json(results);
   } catch (error) {
@@ -76,4 +98,4 @@ export async function POST(request: Request): Promise<NextResponse<RetrievalResu
       { status: 500 }
     );
   }
-} 
+}

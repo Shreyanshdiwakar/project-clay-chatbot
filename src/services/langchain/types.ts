@@ -38,6 +38,11 @@ export interface RetrievalResult {
   success: boolean;
   results?: QueryResult[];
   error?: string;
+  pagination?: {
+    page: number;
+    pageSize: number;
+    totalResults: number;
+  };
 }
 
 export interface WebSearchResult {

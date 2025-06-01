@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, FormEvent, ChangeEvent } from 'react';
+import { useState, useRef, FormEvent, ChangeEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Paperclip, Send, Loader2, Search, Sparkles } from 'lucide-react';
+import { Paperclip, Send, Loader2, Search, Sparkles, AlertTriangle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: File[]) => void;
@@ -11,6 +12,7 @@ interface ChatInputProps {
   placeholder?: string;
   isSearchMode?: boolean;
   onToggleSearchMode?: () => void;
+  timeoutOccurred?: boolean;
 }
 
 export function ChatInput({ 
@@ -18,15 +20,45 @@ export function ChatInput({
   disabled = false, 
   placeholder = "Type your message...",
   isSearchMode = false,
-  onToggleSearchMode = () => {}
+  onToggleSearchMode = () => {},
+  timeoutOccurred = false
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [fileNames, setFileNames] = useState<string[]>([]);
+  const [messageLength, setMessageLength] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Warn about overly long messages
+  const MAX_RECOMMENDED_LENGTH = 4000;
+
+  useEffect(() => {
+    setMessageLength(message.length);
+  }, [message]);
+
+  useEffect(() => {
+    if (timeoutOccurred && isSearchMode) {
+      toast.error('Your last web search timed out', {
+        description: 'Try a shorter query or disable web search',
+        action: {
+          label: 'Disable Web Search',
+          onClick: onToggleSearchMode
+        }
+      });
+    }
+  }, [timeoutOccurred, isSearchMode, onToggleSearchMode]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    
+    // Warn about very long messages but still allow them
+    if (message.length > MAX_RECOMMENDED_LENGTH) {
+      toast.warning('Your message is quite long', {
+        description: 'Long messages may be truncated or take longer to process'
+      });
+    }
+    
     if (message.trim() || files.length > 0) {
       onSendMessage(message, files.length > 0 ? files : undefined);
       setMessage('');
@@ -58,6 +90,14 @@ export function ChatInput({
       handleSubmit(e);
     }
   };
+  
+  // Auto-resize textarea as content grows
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+    }
+  }, [message]);
 
   return (
     <form onSubmit={handleSubmit} className="relative">
@@ -83,6 +123,7 @@ export function ChatInput({
       
       <div className={`flex flex-col border ${isSearchMode ? 'border-indigo-600/70' : 'border-zinc-700'} rounded-xl bg-zinc-900 overflow-hidden focus-within:ring-2 focus-within:ring-zinc-600 shadow-lg transition-all`}>
         <textarea
+          ref={textareaRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -94,12 +135,16 @@ export function ChatInput({
             height: 'auto',
             overflow: 'hidden'
           }}
-          onInput={(e) => {
-            const target = e.target as HTMLTextAreaElement;
-            target.style.height = 'auto';
-            target.style.height = `${Math.min(target.scrollHeight, 180)}px`;
-          }}
         />
+        
+        {messageLength > MAX_RECOMMENDED_LENGTH && (
+          <div className="px-4 py-1 bg-yellow-900/20 border-t border-yellow-700/30">
+            <div className="flex items-center text-yellow-400 text-xs">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              <span>Long messages may take longer to process or be truncated ({messageLength.toLocaleString()} characters)</span>
+            </div>
+          </div>
+        )}
         
         <div className="flex items-center px-2 py-2 border-t border-zinc-800">
           <button

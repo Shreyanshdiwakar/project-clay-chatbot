@@ -19,6 +19,20 @@ import { PdfReader } from "pdfreader";
 const DEFAULT_CHUNK_SIZE = 800;
 const DEFAULT_CHUNK_OVERLAP = 100;
 
+// Maximum number of documents to process in a single batch
+const MAX_BATCH_SIZE = 50;
+
+// Progress tracking
+interface ProcessingProgress {
+  total: number;
+  processed: number;
+  status: 'idle' | 'processing' | 'complete' | 'error';
+  error?: string;
+}
+
+// Global progress tracker
+const processingProgress: Record<string, ProcessingProgress> = {};
+
 // Ensure the docs directory exists
 const DOCS_DIR = path.join(process.cwd(), "data", "docs");
 const VECTORSTORE_DIR = path.join(process.cwd(), "data", "vectorstore");
@@ -141,8 +155,8 @@ class SimpleTextSplitter {
   private splitText(text: string): string[] {
     const chunks: string[] = [];
     
-    if (text.length <= this.chunkSize) {
-      chunks.push(text);
+    if (!text || text.length <= this.chunkSize) {
+      chunks.push(text || "");
       return chunks;
     }
     
@@ -414,6 +428,17 @@ function getDocumentLoader(filePath: string, mimeType: string): SimpleDocumentLo
 }
 
 /**
+ * Get the current processing progress for a document
+ */
+export function getProcessingProgress(documentId: string): ProcessingProgress {
+  return processingProgress[documentId] || { 
+    total: 0, 
+    processed: 0, 
+    status: 'idle' 
+  };
+}
+
+/**
  * Process a document file and add it to the vector store
  */
 export async function processDocument(
@@ -426,6 +451,13 @@ export async function processDocument(
     
     // Generate a unique ID for the document
     const documentId = uuidv4();
+    
+    // Initialize progress tracking
+    processingProgress[documentId] = {
+      total: 1,  // Will be updated later
+      processed: 0,
+      status: 'processing'
+    };
     
     // Create a filename based on the document ID and original filename
     const originalName = file.name;
@@ -444,6 +476,9 @@ export async function processDocument(
     
     // Load documents
     const docs = await loader.load();
+    
+    // Update progress tracking with actual document count
+    processingProgress[documentId].total = docs.length;
     
     // Add file metadata to each document
     const docsWithMetadata = docs.map(doc => {
@@ -465,6 +500,9 @@ export async function processDocument(
     
     console.log(`Split document into ${splitDocs.length} chunks`);
     
+    // Update total for progress tracking
+    processingProgress[documentId].total = splitDocs.length;
+    
     // Get embeddings
     const embeddings = getEmbeddings();
     
@@ -474,10 +512,27 @@ export async function processDocument(
       persistDirectory: VECTORSTORE_DIR,
     });
     
-    // Add documents to vector store
-    await vectorStore.addDocuments(splitDocs);
+    // Add documents to vector store in batches to avoid memory issues
+    const batches = [];
+    for (let i = 0; i < splitDocs.length; i += MAX_BATCH_SIZE) {
+      batches.push(splitDocs.slice(i, i + MAX_BATCH_SIZE));
+    }
     
-    console.log(`Added ${splitDocs.length} document chunks to vector store`);
+    console.log(`Adding ${splitDocs.length} document chunks in ${batches.length} batches`);
+    
+    let processedChunks = 0;
+    for (const batch of batches) {
+      await vectorStore.addDocuments(batch);
+      processedChunks += batch.length;
+      
+      // Update progress
+      processingProgress[documentId].processed = processedChunks;
+      
+      console.log(`Processed ${processedChunks}/${splitDocs.length} chunks`);
+    }
+    
+    // Mark processing as complete
+    processingProgress[documentId].status = 'complete';
     
     // Extract the full text for response
     const fullText = docsWithMetadata.map(doc => doc.pageContent).join('\n\n');
@@ -496,9 +551,16 @@ export async function processDocument(
     
   } catch (error) {
     console.error(`Error processing document: ${error}`);
+    
+    // Mark processing as failed
+    if (processingProgress[documentId]) {
+      processingProgress[documentId].status = 'error';
+      processingProgress[documentId].error = error instanceof Error ? error.message : String(error);
+    }
+    
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error)
     };
   }
-} 
+}

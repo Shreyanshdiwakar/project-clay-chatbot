@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { QueryResult } from '@/services/langchain/types';
+import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface LangChainQueryProps {
   collection?: string;
@@ -14,14 +16,25 @@ export const LangChainQuery = ({ collection = 'default', onError }: LangChainQue
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<QueryResult[] | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMoreResults, setHasMoreResults] = useState(false);
+  
+  // Configure the relevance threshold and page size
+  const threshold = 0.6;
+  const pageSize = 5;
 
-  const handleQuery = async () => {
+  const handleQuery = async (resetPage = true) => {
     if (!query.trim()) return;
     
+    if (resetPage) {
+      setPage(1);
+      setResults(null);
+    }
+    
     setIsLoading(true);
-    setResults(null);
     
     try {
+      const requestPage = resetPage ? 1 : page;
       const response = await fetch(`/api/langchain/query`, {
         method: 'POST',
         headers: {
@@ -30,7 +43,9 @@ export const LangChainQuery = ({ collection = 'default', onError }: LangChainQue
         body: JSON.stringify({
           query,
           collection,
-          limit: 5,
+          limit: pageSize,
+          threshold,
+          page: requestPage
         }),
       });
       
@@ -40,16 +55,50 @@ export const LangChainQuery = ({ collection = 'default', onError }: LangChainQue
         throw new Error(data.error || 'Error searching the knowledge base');
       }
       
-      setResults(data.results || []);
+      const newResults = data.results || [];
+      
+      if (resetPage) {
+        setResults(newResults);
+      } else {
+        setResults(prevResults => [...(prevResults || []), ...newResults]);
+      }
+      
+      // Determine if there are more results
+      setHasMoreResults(newResults.length === pageSize);
+      
+      if (resetPage) {
+        if (newResults.length === 0) {
+          toast.info('No results found', {
+            description: 'Try a different search query'
+          });
+        } else {
+          toast.success(`Found ${newResults.length} results`, {
+            description: newResults.length === pageSize ? 'Scroll down for more' : ''
+          });
+        }
+      } else if (newResults.length > 0) {
+        toast.success(`Loaded ${newResults.length} more results`);
+      } else {
+        toast.info('No more results available');
+        setHasMoreResults(false);
+      }
     } catch (error) {
       console.error('Error querying vector store:', error);
       const message = error instanceof Error ? error.message : String(error);
       if (onError) {
         onError(message);
       }
+      toast.error('Search failed', {
+        description: message
+      });
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const loadMore = () => {
+    setPage(prevPage => prevPage + 1);
+    handleQuery(false);
   };
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -71,11 +120,16 @@ export const LangChainQuery = ({ collection = 'default', onError }: LangChainQue
           disabled={isLoading}
         />
         <Button
-          onClick={handleQuery}
+          onClick={() => handleQuery()}
           disabled={isLoading || !query.trim()}
           className="rounded-l-none"
         >
-          {isLoading ? 'Searching...' : 'Search'}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Searching...
+            </>
+          ) : 'Search'}
         </Button>
       </div>
       
@@ -111,12 +165,32 @@ export const LangChainQuery = ({ collection = 'default', onError }: LangChainQue
               </CardContent>
             </Card>
           ))}
+          
+          {/* Load more button */}
+          {hasMoreResults && (
+            <div className="text-center pt-2">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={isLoading}
+                className="border-zinc-700"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading more...
+                  </>
+                ) : 'Load more results'}
+              </Button>
+            </div>
+          )}
         </div>
       ) : results && results.length === 0 ? (
         <div className="text-center p-6 bg-zinc-800 rounded border border-zinc-700">
           <p className="text-zinc-300">No results found for your query.</p>
+          <p className="text-zinc-400 text-sm mt-2">Try different keywords or check your collection.</p>
         </div>
       ) : null}
     </div>
   );
-}; 
+};
