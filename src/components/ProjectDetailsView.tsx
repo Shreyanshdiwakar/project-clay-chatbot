@@ -82,27 +82,31 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
       
       // Parse the AI response - it should be in JSON format
       try {
-        // First, try to find JSON object in the response
-        const jsonMatch = response.content.match(/```json\s*(\{[\s\S]*?\})\s*```/) || 
-                         response.content.match(/\{[\s\S]*"detailedPlan"[\s\S]*?\}/);
-                         
-        const jsonContent = jsonMatch ? jsonMatch[1] : response.content;
-        const parsedResponse = JSON.parse(jsonContent);
-        setAiDetails(parsedResponse);
+        // Try to find JSON object in the response
+        const jsonPattern = /```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*"detailedPlan"[\s\S]*?\})/;
+        const jsonMatch = response.content.match(jsonPattern);
+        
+        let parsedData;
+        if (jsonMatch) {
+          // Extract the JSON string from the match
+          const jsonString = jsonMatch[1] || jsonMatch[2];
+          parsedData = JSON.parse(jsonString);
+        } else {
+          // If no JSON pattern found, try to parse the entire response
+          try {
+            parsedData = JSON.parse(response.content);
+          } catch (parseError) {
+            // If direct parsing fails, attempt to extract structured data
+            parsedData = extractStructuredData(response.content);
+          }
+        }
+        
+        setAiDetails(parsedData);
       } catch (parseError) {
         console.error("Error parsing AI response:", parseError);
         
         // Extract sections from the text response as a fallback
-        const fallbackDetails = {
-          detailedPlan: extractSection(response.content, "DETAILED IMPLEMENTATION PLAN", "RESOURCES"),
-          resourceLinks: extractLinks(response.content),
-          tips: extractBulletPoints(response.content, "SUCCESS TIPS", "TIMELINE"),
-          timeline: [{
-            phase: "Implementation",
-            tasks: extractBulletPoints(response.content, "TIMELINE")
-          }]
-        };
-        
+        const fallbackDetails = extractStructuredData(response.content);
         setAiDetails(fallbackDetails);
       }
     } catch (error) {
@@ -110,6 +114,8 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
       toast.error("Failed to load detailed guidance", { 
         description: "Please try again later" 
       });
+      
+      // Set default fallback data
       setAiDetails({
         detailedPlan: "Start by researching successful examples of similar projects. Then, create a detailed project plan with clear objectives, timeline, and required resources. Break down the implementation into smaller tasks and assign deadlines to each. Execute the project methodically, ensuring regular reviews and adjustments. Document your progress, challenges, and solutions throughout. Finally, prepare a compelling presentation of your work and findings for relevant audiences.",
         resourceLinks: [
@@ -176,8 +182,62 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
     }
   };
   
+  // Helper function to extract structured data from text
+  const extractStructuredData = (text) => {
+    const detailedPlan = extractSection(text, "DETAILED IMPLEMENTATION PLAN", "RESOURCES") || 
+      "Start by researching your topic thoroughly and developing a clear plan with specific goals and milestones.";
+    
+    const resourceLinksText = extractSection(text, "RESOURCES", "SUCCESS TIPS");
+    const resourceLinks = extractResourceLinks(resourceLinksText) || [
+      { 
+        name: "Project Resources", 
+        url: "https://www.example.com/resources", 
+        description: "Helpful resources for your project" 
+      }
+    ];
+    
+    const tipsText = extractSection(text, "SUCCESS TIPS", "TIMELINE");
+    const tips = extractListItems(tipsText) || [
+      "Plan your project carefully with realistic milestones",
+      "Seek feedback from mentors regularly",
+      "Document your process thoroughly"
+    ];
+    
+    const timelineText = extractSection(text, "TIMELINE");
+    const timelinePhases = timelineText.split(/Phase \d+:|Step \d+:|Stage \d+:|PHASE \d+:/g)
+      .filter(phase => phase.trim().length > 0);
+    
+    const timeline = timelinePhases.map(phaseText => {
+      const phaseLines = phaseText.split('\n').filter(line => line.trim().length > 0);
+      const phase = phaseLines[0]?.trim() || "Implementation Phase";
+      const tasks = phaseLines.slice(1)
+        .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'))
+        .map(line => line.replace(/^[•-]\s*/, '').trim());
+      
+      return { 
+        phase, 
+        tasks: tasks.length > 0 ? tasks : ["Plan and execute this phase of your project"]
+      };
+    });
+    
+    if (timeline.length === 0) {
+      timeline.push({
+        phase: "Planning & Research",
+        tasks: ["Research your topic thoroughly", "Create a detailed project plan", "Gather necessary resources"]
+      }, {
+        phase: "Implementation",
+        tasks: ["Execute your project according to plan", "Document your progress", "Adapt to challenges"]
+      }, {
+        phase: "Completion & Presentation",
+        tasks: ["Finalize your project", "Prepare presentation materials", "Share your results"]
+      });
+    }
+    
+    return { detailedPlan, resourceLinks, tips, timeline };
+  };
+  
   // Helper function to extract a section from text
-  const extractSection = (text: string, startMarker: string, endMarker?: string): string => {
+  const extractSection = (text, startMarker, endMarker) => {
     const startIdx = text.indexOf(startMarker);
     if (startIdx === -1) return "";
     
@@ -191,29 +251,68 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
     return text.substring(effectiveStartIdx, endIdx).trim();
   };
   
-  // Helper function to extract bullet points
-  const extractBulletPoints = (text: string, startMarker: string, endMarker?: string): string[] => {
-    const section = extractSection(text, startMarker, endMarker);
-    return section
+  // Helper function to extract list items
+  const extractListItems = (text) => {
+    if (!text) return [];
+    
+    return text
       .split('\n')
-      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'))
-      .map(line => line.replace(/^[•-]\s*/, '').trim());
+      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().match(/^\d+\./))
+      .map(line => line.replace(/^[•-]\d+\.\s*/, '').trim());
   };
   
-  // Helper function to extract links
-  const extractLinks = (text: string): { name: string; url: string; description: string }[] => {
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)|(?:https?:\/\/[^\s]+)/g;
-    const matches = Array.from(text.matchAll(linkRegex));
+  // Helper function to extract resource links
+  const extractResourceLinks = (text) => {
+    if (!text) return [];
     
-    return matches.map(match => {
-      const name = match[1] || "Resource";
-      const url = match[2] || match[0];
-      return {
-        name,
-        url,
-        description: "Helpful resource for this project"
-      };
-    });
+    const resources = [];
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Try to extract markdown links [name](url)
+      const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      if (linkMatch) {
+        resources.push({
+          name: linkMatch[1],
+          url: linkMatch[2],
+          description: lines[i+1]?.trim() || "Helpful resource for this project"
+        });
+        i++; // Skip the next line as we've used it for description
+        continue;
+      }
+      
+      // Try to extract name and URL separately
+      const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+      if (urlMatch) {
+        resources.push({
+          name: line.replace(urlMatch[0], '').trim() || "Project Resource",
+          url: urlMatch[0],
+          description: lines[i+1]?.trim() || "Helpful resource for this project"
+        });
+        i++; // Skip the next line as we've used it for description
+        continue;
+      }
+      
+      // If this line looks like a resource name
+      if (line.trim().length < 50 && !line.trim().startsWith('-') && !line.trim().startsWith('•')) {
+        const nextLine = lines[i+1];
+        const nextLineUrlMatch = nextLine?.match(/(https?:\/\/[^\s]+)/);
+        
+        if (nextLineUrlMatch) {
+          resources.push({
+            name: line.trim(),
+            url: nextLineUrlMatch[0],
+            description: lines[i+2]?.trim() || "Helpful resource for this project"
+          });
+          i += 2; // Skip the next two lines
+          continue;
+        }
+      }
+    }
+    
+    return resources;
   };
 
   return (
@@ -232,7 +331,7 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
           <Badge variant="outline" className="bg-emerald-900/20 text-emerald-300 border-emerald-700/30">
             {project.timeframe}
           </Badge>
-          {project.category.map((cat, i) => (
+          {Array.isArray(project.category) && project.category.map((cat, i) => (
             <Badge key={i} variant="outline" className="bg-zinc-800 text-zinc-300 border-zinc-700/30">
               {cat}
             </Badge>
@@ -338,7 +437,7 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
                   </div>
                 ))
               ) : (
-                <p className="text-zinc-400">No resources available.</p>
+                <p className="text-zinc-400">No specific resources available. Try searching for "{project.name} tutorial" or "{project.name} guide" online.</p>
               )}
             </div>
           </div>
@@ -364,7 +463,7 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
           <CheckCircle className="h-4 w-4 text-green-400" /> Skills You'll Develop
         </h3>
         <div className="flex flex-wrap gap-2">
-          {project.skillsDeveloped.map((skill, i) => (
+          {Array.isArray(project.skillsDeveloped) && project.skillsDeveloped.map((skill, i) => (
             <Badge key={i} variant="outline" className="bg-green-900/10 text-green-300 border-green-700/30">
               {skill}
             </Badge>
@@ -377,7 +476,7 @@ export function ProjectDetailsView({ project }: ProjectDetailsProps) {
           <List className="h-4 w-4 text-blue-400" /> Basic Implementation Steps
         </h3>
         <div className="space-y-2 pl-2">
-          {project.steps.map((step, i) => (
+          {Array.isArray(project.steps) && project.steps.map((step, i) => (
             <div key={i} className="flex gap-3 items-start">
               <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
                 {i + 1}

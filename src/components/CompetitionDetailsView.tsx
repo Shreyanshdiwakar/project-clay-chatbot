@@ -84,25 +84,30 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
       // Parse the AI response - it should be in JSON format
       try {
         // First, try to find JSON object in the response
-        const jsonMatch = response.content.match(/```json\s*(\{[\s\S]*?\})\s*```/) || 
-                         response.content.match(/\{[\s\S]*"applicationProcess"[\s\S]*?\}/);
-                         
-        const jsonContent = jsonMatch ? jsonMatch[1] : response.content;
-        const parsedResponse = JSON.parse(jsonContent);
-        setAiDetails(parsedResponse);
+        const jsonPattern = /```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*"applicationProcess"[\s\S]*?\})/;
+        const jsonMatch = response.content.match(jsonPattern);
+        
+        let parsedData;
+        if (jsonMatch) {
+          // Extract the JSON string from the match
+          const jsonString = jsonMatch[1] || jsonMatch[2];
+          parsedData = JSON.parse(jsonString);
+        } else {
+          // If no JSON pattern found, try to parse the entire response
+          try {
+            parsedData = JSON.parse(response.content);
+          } catch (parseError) {
+            // If direct parsing fails, attempt to extract structured data
+            parsedData = extractStructuredData(response.content);
+          }
+        }
+        
+        setAiDetails(parsedData);
       } catch (parseError) {
         console.error("Error parsing AI response:", parseError);
         
         // Extract sections from the text response as a fallback
-        const fallbackDetails = {
-          applicationProcess: extractSection(response.content, "APPLICATION PROCESS", "PREPARATION STEPS"),
-          preparationSteps: extractBulletPoints(response.content, "PREPARATION STEPS", "SUCCESS STRATEGIES"),
-          successStrategies: extractBulletPoints(response.content, "SUCCESS STRATEGIES", "PAST WINNER PROFILES"),
-          pastWinnerProfiles: extractBulletPoints(response.content, "PAST WINNER PROFILES", "SCHOLARSHIP INFO"),
-          scholarshipInfo: extractSection(response.content, "SCHOLARSHIP INFO", "RELATED OPPORTUNITIES"),
-          relatedOpportunities: extractLinks(response.content)
-        };
-        
+        const fallbackDetails = extractStructuredData(response.content);
         setAiDetails(fallbackDetails);
       }
     } catch (error) {
@@ -110,6 +115,8 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
       toast.error("Failed to load detailed guidance", { 
         description: "Please try again later" 
       });
+      
+      // Set default fallback data
       setAiDetails({
         applicationProcess: "Research the competition's official website for detailed application requirements and deadlines. Create an account on their application portal if required. Prepare all necessary documents, such as your personal statement, project description, or academic records. Review the submission guidelines carefully to ensure you meet all requirements. Have a teacher or mentor review your application before submitting. Submit well before the deadline to avoid technical issues.",
         preparationSteps: [
@@ -162,8 +169,54 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
     }
   };
   
+  // Helper function to extract structured data from text response
+  const extractStructuredData = (text) => {
+    return {
+      applicationProcess: extractSection(text, "APPLICATION PROCESS", "PREPARATION STEPS") || 
+        "Research the competition's official website for detailed application requirements and deadlines. Create an account on their application portal if required. Prepare all necessary documents and follow submission guidelines carefully.",
+      
+      preparationSteps: extractListItems(text, "PREPARATION STEPS", "SUCCESS STRATEGIES") || [
+        "Research past winners and successful entries",
+        "Create a detailed preparation timeline",
+        "Gather necessary resources and materials",
+        "Seek mentorship from teachers or professionals",
+        "Practice your presentation skills"
+      ],
+      
+      successStrategies: extractListItems(text, "SUCCESS STRATEGIES", "PAST WINNER PROFILES") || [
+        "Focus on innovation and originality",
+        "Demonstrate clear real-world applications",
+        "Document your process thoroughly",
+        "Connect your project to broader issues"
+      ],
+      
+      pastWinnerProfiles: extractListItems(text, "PAST WINNER PROFILES", "SCHOLARSHIP INFO") || [
+        "Projects that addressed significant real-world problems",
+        "Work that demonstrated exceptional creativity",
+        "Submissions showing strong research methodology",
+        "Projects that effectively communicated complex concepts"
+      ],
+      
+      scholarshipInfo: extractSection(text, "SCHOLARSHIP INFO", "RELATED OPPORTUNITIES") || 
+        "This competition typically offers recognition and awards to top performers. Check the competition's official website for the most current information about specific award amounts and types.",
+      
+      relatedOpportunities: extractOpportunities(text) || [
+        {
+          name: "Similar Competition",
+          url: "https://www.example.org/similar-competition",
+          description: "Another competition in this field"
+        },
+        {
+          name: "Summer Program",
+          url: "https://www.example.org/summer-program",
+          description: "Build skills relevant to this competition"
+        }
+      ]
+    };
+  };
+  
   // Helper function to extract a section from text
-  const extractSection = (text: string, startMarker: string, endMarker?: string): string => {
+  const extractSection = (text, startMarker, endMarker) => {
     const startIdx = text.indexOf(startMarker);
     if (startIdx === -1) return "";
     
@@ -178,31 +231,63 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
   };
   
   // Helper function to extract bullet points
-  const extractBulletPoints = (text: string, startMarker: string, endMarker?: string): string[] => {
+  const extractListItems = (text, startMarker, endMarker) => {
     const section = extractSection(text, startMarker, endMarker);
+    if (!section) return [];
+    
     return section
       .split('\n')
-      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'))
-      .map(line => line.replace(/^[•-]\s*/, '').trim());
+      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().match(/^\d+\./))
+      .map(line => line.replace(/^[•-]\d+\.\s*/, '').trim());
   };
   
-  // Helper function to extract links
-  const extractLinks = (text: string): { name: string; url: string; description: string }[] => {
+  // Helper function to extract opportunities
+  const extractOpportunities = (text) => {
     const section = extractSection(text, "RELATED OPPORTUNITIES");
-    const links: { name: string; url: string; description: string }[] = [];
+    if (!section) return [];
     
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)|(?:https?:\/\/[^\s]+)/g;
-    const matches = Array.from(section.matchAll(linkRegex));
+    const opportunities = [];
+    const lines = section.split('\n').filter(line => line.trim().length > 0);
     
-    return matches.map(match => {
-      const name = match[1] || "Related Opportunity";
-      const url = match[2] || match[0];
-      return {
-        name,
-        url,
-        description: "Related competition or program"
-      };
-    });
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Try to extract markdown links [name](url)
+      const linkMatch = line.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      if (linkMatch) {
+        opportunities.push({
+          name: linkMatch[1],
+          url: linkMatch[2],
+          description: lines[i+1]?.trim() || "Related opportunity"
+        });
+        i++; // Skip the next line as we've used it for description
+        continue;
+      }
+      
+      // Try to extract URLs
+      const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+      if (urlMatch) {
+        opportunities.push({
+          name: line.replace(urlMatch[0], '').trim() || "Related Opportunity",
+          url: urlMatch[0],
+          description: lines[i+1]?.trim() || "Related opportunity"
+        });
+        i++; // Skip the next line as we've used it for description
+        continue;
+      }
+      
+      // If this looks like a heading (short line without punctuation)
+      if (line.length < 50 && !line.includes('.') && !line.trim().startsWith('-')) {
+        opportunities.push({
+          name: line.trim(),
+          url: "https://www.google.com/search?q=" + encodeURIComponent(line.trim()),
+          description: lines[i+1]?.trim() || "Related opportunity"
+        });
+        i++; // Skip the next line
+      }
+    }
+    
+    return opportunities;
   };
 
   return (
@@ -221,7 +306,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
           <Badge variant="outline" className="bg-red-900/20 text-red-300 border-red-700/30">
             {competition.competitiveness} competition
           </Badge>
-          {competition.category.map((cat, i) => (
+          {Array.isArray(competition.category) && competition.category.map((cat, i) => (
             <Badge key={i} variant="outline" className="bg-zinc-800 text-zinc-300 border-zinc-700/30">
               {cat}
             </Badge>
@@ -353,7 +438,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
                   </div>
                 ))
               ) : (
-                <p className="text-zinc-400">No related opportunities available.</p>
+                <p className="text-zinc-400">No related opportunities available. Try searching for similar competitions in this field.</p>
               )}
             </div>
           </div>
@@ -380,7 +465,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
             <CheckCircle className="h-4 w-4 text-green-400" /> Eligibility
           </h3>
           <ul className="list-disc pl-5 space-y-1">
-            {competition.eligibility.map((item, i) => (
+            {Array.isArray(competition.eligibility) && competition.eligibility.map((item, i) => (
               <li key={i} className="text-sm text-zinc-300">{item}</li>
             ))}
           </ul>
@@ -414,7 +499,7 @@ export function CompetitionDetailsView({ competition }: CompetitionDetailsProps)
           <Star className="h-4 w-4 text-yellow-400" /> Benefits
         </h3>
         <ul className="list-disc pl-5 space-y-1">
-          {competition.benefits.map((benefit, i) => (
+          {Array.isArray(competition.benefits) && competition.benefits.map((benefit, i) => (
             <li key={i} className="text-sm text-zinc-300">{benefit}</li>
           ))}
         </ul>
