@@ -436,7 +436,7 @@ export default function Home() {
                 <ThinkingIndicator steps={thinkingSteps} model="GPT-4.1 Mini" />
               )}
               {error && (
-                <Alert variant="destructive\" className="bg-red-950/30 border-red-800/30 text-red-300">
+                <Alert variant="destructive\" className=\"bg-red-950/30 border-red-800/30 text-red-300">
                   <AlertTriangle className="h-5 w-5" />
                   <AlertTitle className="text-red-300">Error</AlertTitle>
                   <AlertDescription className="text-red-200">{error}</AlertDescription>
