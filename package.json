@@ -14,6 +14,7 @@
     "test:web-search": "NODE_OPTIONS='--loader ts-node/esm' ts-node --esm src/tests/test-web-search.ts"
   },
   "dependencies": {
+    "@huggingface/inference": "^2.6.4",
     "@langchain/community": "^0.0.29",
     "@langchain/core": "^0.1.63",
     "@langchain/openai": "^0.0.14",
