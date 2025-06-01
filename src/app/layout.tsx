@@ -35,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en\" className="h-full dark\" suppressHydrationWarning>
+    <html lang="en" className="h-full dark" suppressHydrationWarning>
       <head>
         {/* Primary favicon */}
         <link rel="icon" href="/projectclay-logo.svg" sizes="32x32" />
