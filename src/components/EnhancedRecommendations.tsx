@@ -24,6 +24,8 @@ import {
 } from '@/services/recommendations/analysis';
 import { RecommendationFeedback } from '@/components/RecommendationFeedback';
 import { submitFeedback } from '@/services/recommendations/feedback';
+import { ProjectDetailsView } from '@/components/ProjectDetailsView';
+import { CompetitionDetailsView } from '@/components/CompetitionDetailsView';
 import { 
   BookOpen, Award, Calendar, Trophy, Star, Info, Filter,
   ExternalLink, BarChart3, CheckCircle, ArrowUpRight, List,
@@ -327,75 +329,12 @@ export function EnhancedRecommendations({
                         <DialogHeader>
                           <DialogTitle className="flex items-center gap-2">
                             <BookOpen className="h-5 w-5 text-blue-400" />
-                            {project.name}
+                            Project Details
                           </DialogTitle>
                         </DialogHeader>
                         
-                        <div className="space-y-4 mt-2">
-                          <div className="flex gap-2 flex-wrap">
-                            <Badge variant="outline" className="bg-blue-900/20 text-blue-300 border-blue-700/30">
-                              {project.complexity}
-                            </Badge>
-                            <Badge variant="outline" className="bg-emerald-900/20 text-emerald-300 border-emerald-700/30">
-                              {project.timeframe}
-                            </Badge>
-                            {project.category.map((cat, i) => (
-                              <Badge key={i} variant="outline" className="bg-zinc-800 text-zinc-300 border-zinc-700/30">
-                                {cat}
-                              </Badge>
-                            ))}
-                          </div>
-                          
-                          <p className="text-zinc-300">{project.description}</p>
-                          
-                          <div>
-                            <h3 className="text-sm font-medium text-zinc-200 mb-2 flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-400" /> Skills You'll Develop
-                            </h3>
-                            <div className="flex flex-wrap gap-2">
-                              {project.skillsDeveloped.map((skill, i) => (
-                                <Badge key={i} variant="outline" className="bg-green-900/10 text-green-300 border-green-700/30">
-                                  {skill}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <h3 className="text-sm font-medium text-zinc-200 mb-2 flex items-center gap-2">
-                              <List className="h-4 w-4 text-blue-400" /> Implementation Steps
-                            </h3>
-                            <div className="space-y-2 pl-2">
-                              {project.steps.map((step, i) => (
-                                <div key={i} className="flex gap-3 items-start">
-                                  <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
-                                    {i + 1}
-                                  </div>
-                                  <p className="text-sm text-zinc-300">{step}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <h3 className="text-sm font-medium text-zinc-200 mb-2 flex items-center gap-2">
-                              <BookOpen className="h-4 w-4 text-purple-400" /> Resources
-                            </h3>
-                            <div className="space-y-2 pl-2">
-                              {project.resources.map((resource, i) => (
-                                <a 
-                                  key={i} 
-                                  href={resource.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex gap-2 items-center text-blue-400 hover:text-blue-300 hover:underline"
-                                >
-                                  <ArrowUpRight className="h-4 w-4" />
-                                  <span className="text-sm">{resource.name}</span>
-                                </a>
-                              ))}
-                            </div>
-                          </div>
+                        <div className="max-h-[70vh] overflow-y-auto pr-2">
+                          <ProjectDetailsView project={project} />
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -440,26 +379,15 @@ export function EnhancedRecommendations({
                           View Details
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
+                      <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-2xl">
                         <DialogHeader>
-                          <DialogTitle>{project.name}</DialogTitle>
+                          <DialogTitle className="flex items-center gap-2">
+                            <BookOpen className="h-5 w-5 text-blue-400" />
+                            Project Details
+                          </DialogTitle>
                         </DialogHeader>
-                        <div className="space-y-4">
-                          <p className="text-zinc-300">{project.description}</p>
-                          
-                          <div>
-                            <h3 className="text-sm font-medium text-zinc-200 mb-2">Implementation Steps</h3>
-                            <div className="space-y-2 pl-2">
-                              {project.steps.map((step, i) => (
-                                <div key={i} className="flex gap-3 items-start">
-                                  <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
-                                    {i + 1}
-                                  </div>
-                                  <p className="text-sm text-zinc-300">{step}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
+                        <div className="max-h-[70vh] overflow-y-auto pr-2">
+                          <ProjectDetailsView project={project} />
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -526,76 +454,12 @@ export function EnhancedRecommendations({
                         <DialogHeader>
                           <DialogTitle className="flex items-center gap-2">
                             <Trophy className="h-5 w-5 text-amber-400" />
-                            {competition.name}
+                            Competition Details
                           </DialogTitle>
                         </DialogHeader>
                         
-                        <div className="space-y-4 mt-2">
-                          <div className="flex gap-2 flex-wrap">
-                            <Badge variant="outline" className="bg-amber-900/20 text-amber-300 border-amber-700/30">
-                              {competition.difficulty}
-                            </Badge>
-                            <Badge variant="outline" className="bg-red-900/20 text-red-300 border-red-700/30">
-                              {competition.competitiveness} competition
-                            </Badge>
-                            {competition.category.map((cat, i) => (
-                              <Badge key={i} variant="outline" className="bg-zinc-800 text-zinc-300 border-zinc-700/30">
-                                {cat}
-                              </Badge>
-                            ))}
-                          </div>
-                          
-                          <p className="text-zinc-300">{competition.description}</p>
-                          
-                          {competition.url && (
-                            <a 
-                              href={competition.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 hover:underline"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                              Visit Official Website
-                            </a>
-                          )}
-                          
-                          <div>
-                            <h3 className="text-sm font-medium text-zinc-200 mb-2 flex items-center gap-2">
-                              <CheckCircle className="h-4 w-4 text-green-400" /> Eligibility
-                            </h3>
-                            <ul className="list-disc pl-5 space-y-1">
-                              {competition.eligibility.map((item, i) => (
-                                <li key={i} className="text-sm text-zinc-300">{item}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          
-                          <div className="flex gap-6">
-                            <div>
-                              <h3 className="text-sm font-medium text-zinc-200 mb-2 flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-red-400" /> Deadline
-                              </h3>
-                              <p className="text-sm text-zinc-300">{competition.deadline}</p>
-                            </div>
-                            
-                            {competition.fee && (
-                              <div>
-                                <h3 className="text-sm font-medium text-zinc-200 mb-2">Fee</h3>
-                                <p className="text-sm text-zinc-300">{competition.fee}</p>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div>
-                            <h3 className="text-sm font-medium text-zinc-200 mb-2 flex items-center gap-2">
-                              <Star className="h-4 w-4 text-yellow-400" /> Benefits
-                            </h3>
-                            <ul className="list-disc pl-5 space-y-1">
-                              {competition.benefits.map((benefit, i) => (
-                                <li key={i} className="text-sm text-zinc-300">{benefit}</li>
-                              ))}
-                            </ul>
-                          </div>
+                        <div className="max-h-[70vh] overflow-y-auto pr-2">
+                          <CompetitionDetailsView competition={competition} />
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -627,22 +491,28 @@ export function EnhancedRecommendations({
                       Rate This
                     </Button>
                     
-                    {competition.url && (
-                      <a 
-                        href={competition.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                      >
+                    <Dialog>
+                      <DialogTrigger asChild>
                         <Button 
                           variant="default" 
                           size="sm"
                           className="bg-blue-600 hover:bg-blue-700"
                         >
-                          Official Website
-                          <ExternalLink className="h-4 w-4 ml-2" />
+                          View Details
                         </Button>
-                      </a>
-                    )}
+                      </DialogTrigger>
+                      <DialogContent className="bg-zinc-900 border-zinc-800 text-white max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2">
+                            <Trophy className="h-5 w-5 text-amber-400" />
+                            Competition Details
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="max-h-[70vh] overflow-y-auto pr-2">
+                          <CompetitionDetailsView competition={competition} />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </CardFooter>
                 </Card>
               ))}
