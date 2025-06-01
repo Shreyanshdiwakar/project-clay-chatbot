@@ -136,6 +136,87 @@ function formatContentWithCitations(content: string, webSearchResults: WebSearch
 function getMockResponse(userMessage: string): ModelResponse {
   console.log('Using mock response for development');
   
+  // Check if request is for project or competition details in JSON format
+  if (userMessage.toLowerCase().includes('project') && 
+      userMessage.toLowerCase().includes('json')) {
+    
+    console.log('Returning mock JSON project details');
+    
+    // Create a properly formatted JSON string for project details
+    const mockProjectDetails = {
+      title: "Environmental Monitoring System",
+      description: "A comprehensive IoT-based system for monitoring environmental factors such as air quality, temperature, and humidity in urban areas.",
+      difficultyLevel: "Intermediate",
+      timeCommitment: "3-4 months",
+      skillsRequired: ["Arduino programming", "Sensor integration", "Data analysis", "Cloud computing"],
+      materialsCost: "$150-200",
+      impactAreas: ["Environmental science", "Public health", "Urban planning"],
+      learningOutcomes: ["Hardware-software integration", "Environmental data analysis", "IoT system design"],
+      implementationSteps: [
+        "Research and select appropriate environmental sensors",
+        "Design and build the sensor housing and circuit",
+        "Program the microcontroller for data collection",
+        "Develop a web dashboard for data visualization",
+        "Deploy multiple units across different locations"
+      ],
+      additionalResources: [
+        {
+          title: "Arduino Environmental Monitoring Guide",
+          url: "https://example.com/arduino-guide"
+        },
+        {
+          title: "IoT Cloud Platforms Comparison",
+          url: "https://example.com/iot-cloud-comparison"
+        }
+      ]
+    };
+    
+    return {
+      success: true,
+      content: JSON.stringify(mockProjectDetails),
+      webSearchAttempted: false,
+      model: "gpt-4.1-mini"
+    };
+  }
+  
+  // Check if request is for competition details in JSON format
+  if (userMessage.toLowerCase().includes('competition') && 
+      userMessage.toLowerCase().includes('json')) {
+    
+    console.log('Returning mock JSON competition details');
+    
+    // Create a properly formatted JSON string for competition details
+    const mockCompetitionDetails = {
+      name: "International Science and Engineering Fair (ISEF)",
+      organizer: "Society for Science",
+      website: "https://www.societyforscience.org/isef/",
+      description: "The world's largest pre-college science competition that provides a platform for high school students to showcase their independent research.",
+      eligibility: "High school students grades 9-12",
+      deadline: "Varies by region, typically January-February for local fairs",
+      prizes: ["Grand Award: $75,000", "Category Awards: $5,000-$50,000", "Special Awards from various organizations"],
+      categories: ["Animal Sciences", "Behavioral Sciences", "Biochemistry", "Biomedical Engineering", "Cellular & Molecular Biology", "Chemistry", "Computational Biology", "Computer Science", "Earth & Environmental Sciences", "Engineering", "Materials Science", "Mathematics", "Microbiology", "Physics", "Plant Sciences", "Robotics"],
+      applicationProcess: [
+        "Participate in a local or regional science fair",
+        "Win nomination to attend ISEF from your regional fair",
+        "Complete the ISEF application forms",
+        "Prepare your research paper and presentation materials"
+      ],
+      tips: [
+        "Start your project early, ideally 6-12 months before the fair",
+        "Find a mentor in your research area",
+        "Document your process thoroughly in a research notebook",
+        "Practice your presentation skills extensively"
+      ]
+    };
+    
+    return {
+      success: true,
+      content: JSON.stringify(mockCompetitionDetails),
+      webSearchAttempted: false,
+      model: "gpt-4.1-mini"
+    };
+  }
+  
   const responses = [
     "**Excellent Question!**\n\nBased on your interest in college applications, here are some recommended extracurricular activities:\n\n- **Leadership Positions**: Seek roles in student government or club leadership\n- **Community Service**: Volunteer consistently with organizations aligned to your interests\n- **Academic Competitions**: Participate in subject-specific competitions relevant to your intended major\n- **Personal Projects**: Develop independent initiatives that showcase your passions\n\nRemember, colleges value depth over breadth. It's better to be deeply involved in a few activities than superficially involved in many.\n\nWhat specific field or major are you considering?",
     
