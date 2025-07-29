@@ -304,12 +304,6 @@ export default function Home() {
         setMessages(prev => [...prev, botMessage]);
         setIsThinking(false);
         
-        // Update this session with the new message count
-        const sessionId = Math.random().toString(36).substring(2, 15);
-        activeSessions.set(sessionId, {
-          lastActive: Date.now(),
-          messagesCount: (activeSessions.get(sessionId)?.messagesCount || 0) + 1
-        });
       }, data.thinking && data.thinking.length > 0 ? 800 : 0);
     } catch (err) {
       setIsThinking(false);
