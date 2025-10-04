@@ -68,13 +68,6 @@ yarn
 
 3. Set up your OpenAI API key using one of these methods:
 
-#### Method 1: Using the setup script (Recommended)
-```bash
-node setup-env.js YOUR_API_KEY
-```
-Replace `YOUR_API_KEY` with your actual OpenAI API key.
-
-#### Method 2: Manual setup
 Create a `.env.local` file in the root directory with your OpenAI API key:
 ```
 OPENAI_API_KEY=your_openai_api_key_here
@@ -138,39 +131,7 @@ The application uses Radix UI components for building accessible and customizabl
 
 These components are styled with Tailwind CSS and offer a consistent and responsive user experience across different devices and screen sizes.
 
-## Testing
 
-### Web Search Testing
-
-To test the web search functionality:
-
-1. Ensure the development server is running:
-   ```
-   npm run dev
-   ```
-
-2. Run the web search test script:
-   ```
-   npm run test:web-search
-   ```
-
-This will send a test request to the API and verify if web search is working correctly by:
-- Checking if web search was attempted
-- Verifying tool calls were processed
-- Confirming content was returned
-- Checking if web search results were included
-
-The test uses a predefined query: "What are the current top universities for computer science in 2024?"
-
-### General Testing
-
-The project includes a test suite for verifying core functionality:
-
-```bash
-npm run test
-```
-
-This executes tests using ts-node with ESM support for TypeScript integration testing.
 
 ## Troubleshooting
 
@@ -188,10 +149,7 @@ The application includes a built-in API key setup guide that will appear in the 
 If you see authentication errors:
 
 1. Verify your API key on the [OpenAI dashboard](https://platform.openai.com/api-keys)
-2. Run the setup script with your valid API key:
-   ```bash
-   node setup-env.js YOUR_VALID_API_KEY
-   ```
+2. Check your `.env.local` file has the correct API key
 3. Restart the development server
 4. Clear your browser cache or try in an incognito window
 
@@ -227,9 +185,7 @@ Key directories and files in the project:
   - `LangChainFileUpload.tsx` - Component for uploading documents
   - `LangChainQuery.tsx` - Component for querying the vector store
 
-- `src/tests/` - Test files
-  - `test.ts` - General test suite
-  - `test-web-search.ts` - Web search functionality tests
+
 
 ## Development Tools
 
@@ -241,7 +197,6 @@ The project uses several development tools for better code quality and build pro
 - Cross-env for environment variable management across platforms
 - Autoprefixer for CSS compatibility
 - Dotenv for environment variable management
-- TS-Node for TypeScript execution in Node.js
 
 ### Build Commands
 
